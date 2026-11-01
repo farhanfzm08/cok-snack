@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,8 @@ import {
   Building2,
   FileText,
   CheckCircle2,
-  Receipt
+  Receipt,
+  Trash2
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -144,6 +145,23 @@ export default function ReportsPage() {
       console.error("Gagal memuat data laporan:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSale = async (s: any) => {
+    if (!confirm(`Hapus transaksi penjualan "${s.invoice_number}" (${formatRupiah(Number(s.total_amount || 0))})?\n\nRiwayat penjualan di laporan dan catatan kas masuk terkait akan ikut terhapus.`)) return;
+
+    try {
+      // 1. Hapus kas terkait jika ada
+      await supabase.from("cash_movements").delete().eq("reference_id", s.id);
+      await supabase.from("cash_movements").delete().eq("reference_id", s.invoice_number);
+      // 2. Hapus sale (cascade delete sale_items)
+      const { error } = await supabase.from("sales").delete().eq("id", s.id);
+      if (error) throw error;
+
+      fetchReportsData();
+    } catch (err: any) {
+      alert("Gagal menghapus transaksi: " + err.message);
     }
   };
 
@@ -427,6 +445,7 @@ export default function ReportsPage() {
                       <th className="py-3 px-3 text-right">Omzet</th>
                       <th className="py-3 px-3 text-right">HPP</th>
                       <th className="py-3 px-3 text-right">Laba Kotor</th>
+                      <th className="py-3 px-3 text-center w-12">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/60">
@@ -456,6 +475,15 @@ export default function ReportsPage() {
                           </td>
                           <td className="py-3 px-3 text-right font-bold text-success">
                             {formatRupiah(profit)}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              onClick={() => handleDeleteSale(s)}
+                              className="p-1 rounded-lg text-muted hover:text-danger hover:bg-rose-50 transition-colors"
+                              title="Hapus Transaksi Penjualan"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </td>
                         </tr>
                       );

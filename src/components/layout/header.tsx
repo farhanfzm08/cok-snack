@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, User, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -77,8 +78,12 @@ export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* User Role Indicator */}
-        <div className="flex items-center gap-2">
+        {/* User Role Indicator (Clickable to Profile) */}
+        <Link
+          href="/profile"
+          className="flex items-center gap-2 p-1 rounded-xl hover:bg-background transition-colors"
+          title="Buka Profil Saya"
+        >
           <div className="w-8 h-8 rounded-full bg-lavender text-primary flex items-center justify-center font-bold text-xs">
             <User className="w-4 h-4" />
           </div>
@@ -90,7 +95,7 @@ export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
               {userEmail ? userEmail.split("@")[0] : "Aktif"}
             </Badge>
           </div>
-        </div>
+        </Link>
 
         {/* Logout Button */}
         <button

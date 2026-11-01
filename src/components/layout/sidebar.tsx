@@ -41,12 +41,13 @@ export const navItems: NavItem[] = [
   { name: "Laporan", href: "/reports", icon: BarChart3 },
   { name: "Panduan & Tutorial", href: "/tutorial", icon: BookOpen, pastelBg: "bg-sky" },
   { name: "Pengaturan", href: "/settings", icon: Settings },
+  { name: "Profil Saya", href: "/profile", icon: User },
 ];
 
 // Role-based menu visibility
 const ROLE_MENU: Record<string, string[]> = {
-  kasir: ["/pos", "/dashboard"],
-  admin: ["/pos", "/dashboard", "/products", "/suppliers", "/purchases", "/inventory", "/repacking", "/reports", "/tutorial"],
+  kasir: ["/pos", "/dashboard", "/profile"],
+  admin: ["/pos", "/dashboard", "/products", "/suppliers", "/purchases", "/inventory", "/repacking", "/reports", "/tutorial", "/profile"],
   owner: ["*"],
 };
 
@@ -164,19 +165,24 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
       {/* Footer info */}
       <div className="p-4 border-t border-line bg-background/50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-lavender text-primary flex items-center justify-center shrink-0">
+        <Link
+          href="/profile"
+          onClick={onClose}
+          className="flex items-center gap-3 p-1.5 -m-1.5 rounded-xl hover:bg-lavender/40 transition-colors group"
+          title="Buka Profil Saya"
+        >
+          <div className="w-9 h-9 rounded-xl bg-lavender text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <User className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-foreground truncate">
+            <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
               {userEmail || "COK Snack System"}
             </p>
             <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${roleBg[userRole] || roleBg["kasir"]}`}>
               {roleLabel[userRole] || userRole}
             </span>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

@@ -7,8 +7,8 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publi
 
 // Route permissions per role
 const ROLE_ROUTES: Record<string, string[]> = {
-  kasir: ['/pos', '/dashboard'],
-  admin: ['/pos', '/dashboard', '/products', '/suppliers', '/purchases', '/inventory', '/repacking', '/reports', '/tutorial'],
+  kasir: ['/pos', '/dashboard', '/profile'],
+  admin: ['/pos', '/dashboard', '/products', '/suppliers', '/purchases', '/inventory', '/repacking', '/reports', '/tutorial', '/profile'],
   owner: ['*'], // all routes
 }
 
@@ -30,6 +30,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
+
+  // Allow API routes to handle their own authentication and response
+  if (pathname.startsWith('/api')) {
+    return supabaseResponse
+  }
 
   // If not logged in and not on login page, redirect to login
   if (!user && !pathname.startsWith('/login')) {

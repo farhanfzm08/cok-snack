@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -145,18 +145,33 @@ export default function FinancePage() {
   };
 
   // Delete Cash Movement
-  const handleDeleteMovement = async (id: string, cat: string, nominal: number) => {
-    if (!confirm(`Hapus catatan kas "${cat}" sebesar ${formatRupiah(nominal)}?`)) return;
+  const handleDeleteMovement = async (m: CashMovement) => {
+    if (!confirm(`Hapus catatan kas "${m.category}" sebesar ${formatRupiah(m.amount)}?\n\nJika ini transaksi kasir, data penjualan di laporan juga akan ikut terhapus.`)) return;
 
     setIsSubmitting(true);
-    const { error } = await supabase.from("cash_movements").delete().eq("id", id);
-    setIsSubmitting(false);
+    try {
+      // 1. Hapus dari cash_movements
+      const { error } = await supabase.from("cash_movements").delete().eq("id", m.id);
+      if (error) throw error;
 
-    if (error) {
-      showToast("error", "Gagal menghapus: " + error.message);
-    } else {
-      showToast("success", "Catatan transaksi kas berhasil dihapus.");
+      // 2. Jika berasal dari penjualan kasir, hapus juga data di sales agar sinkron dengan laporan
+      if (m.reference_id) {
+        await supabase.from("sales").delete().eq("id", m.reference_id);
+        await supabase.from("sales").delete().eq("invoice_number", m.reference_id);
+      } else if (m.category === "Penjualan Kasir" && m.notes) {
+        // Cek jika nomor invoice ada di notes
+        const invoiceMatch = m.notes.match(/INV-[A-Z0-9-]+/i);
+        if (invoiceMatch) {
+          await supabase.from("sales").delete().eq("invoice_number", invoiceMatch[0]);
+        }
+      }
+
+      showToast("success", "Catatan transaksi kas dan riwayat laporan terkait berhasil dihapus.");
       fetchMovements();
+    } catch (err: any) {
+      showToast("error", "Gagal menghapus transaksi: " + err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -379,7 +394,7 @@ export default function FinancePage() {
                       </td>
                       <td className="py-3 px-3 text-right">
                         <button
-                          onClick={() => handleDeleteMovement(m.id, m.category, m.amount)}
+                          onClick={() => handleDeleteMovement(m)}
                           className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-red-50 transition-colors"
                           title="Hapus Catatan Kas"
                         >
