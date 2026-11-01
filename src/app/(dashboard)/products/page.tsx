@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Package,
   Plus,
@@ -303,7 +304,13 @@ export default function ProductsPage() {
             Kelola snack bahan baku curah (kg) dan produk jadi kemasan repack (gram).
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/inventory">
+            <Button variant="outline" className="border-line hover:border-primary text-xs">
+              <Boxes className="w-3.5 h-3.5 mr-1 text-primary" />
+              Lihat Stok & Mutasi
+            </Button>
+          </Link>
           {activeTab === "products" ? (
             <Button
               variant="primary"

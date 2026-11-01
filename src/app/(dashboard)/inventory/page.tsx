@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   Boxes, 
   Search, 
@@ -17,7 +18,8 @@ import {
   X,
   Package,
   Layers,
-  Sparkles
+  Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,6 +83,7 @@ export default function InventoryPage() {
       const { data: prodData, error: prodErr } = await supabase
         .from("products")
         .select("*")
+        .eq("is_active", true)
         .order("name", { ascending: true });
       if (prodErr) throw prodErr;
       setProducts(prodData || []);
@@ -175,6 +178,30 @@ export default function InventoryPage() {
   // Metrics
   const rawMaterials = products.filter((p) => p.type === "raw_material");
   const finishedGoods = products.filter((p) => p.type === "finished_good");
+
+  const handleDeleteProduct = async (p: Product) => {
+    if (!window.confirm(`Hapus produk "${p.name}" dari sistem inventaris dan katalog produk?`)) return;
+    
+    try {
+      // 1. Bersihkan mutasi stok terkait jika ada
+      await supabase.from("stock_movements").delete().eq("product_id", p.id);
+      // 2. Hapus produk
+      const { error } = await supabase.from("products").delete().eq("id", p.id);
+      if (error) {
+        // Fallback jika ada relasi foreign key lain (misal riwayat transaksi): soft delete
+        const { error: softErr } = await supabase
+          .from("products")
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq("id", p.id);
+        if (softErr) throw softErr;
+      }
+      setSuccessMsg(`Produk "${p.name}" berhasil dihapus dari inventaris.`);
+      loadInventory();
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(`Gagal menghapus produk: ${err.message}`);
+    }
+  };
   const lowStockItems = products.filter((p) => Number(p.current_stock) <= Number(p.min_stock_alert));
 
   const totalRawWeightKg = rawMaterials.reduce((acc, p) => acc + Number(p.current_stock || 0), 0);
@@ -229,7 +256,13 @@ export default function InventoryPage() {
             Monitoring stok bahan curah kg, produk jadi kemasan, dan audit trail pergerakan barang.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/products">
+            <Button variant="outline" className="border-line hover:border-primary text-xs">
+              <Package className="w-3.5 h-3.5 mr-1 text-primary" />
+              Katalog Produk
+            </Button>
+          </Link>
           <Button
             variant={activeTab === "overview" ? "primary" : "outline"}
             onClick={() => setActiveTab("overview")}
@@ -450,14 +483,23 @@ export default function InventoryPage() {
                             )}
                           </td>
                           <td className="px-5 py-3.5 text-center">
-                            <Button
-                              variant="outline"
-                              onClick={() => handleOpenAdjust(p)}
-                              className="text-xs h-7 px-2.5 gap-1 border-line hover:border-primary text-muted hover:text-foreground"
-                            >
-                              <Sliders className="w-3.5 h-3.5 text-primary" />
-                              Sesuaikan
-                            </Button>
+                            <div className="inline-flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                onClick={() => handleOpenAdjust(p)}
+                                className="text-xs h-7 px-2.5 gap-1 border-line hover:border-primary text-muted hover:text-foreground"
+                              >
+                                <Sliders className="w-3.5 h-3.5 text-primary" />
+                                Sesuaikan
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleDeleteProduct(p)}
+                                className="text-xs h-7 px-2 gap-1 border-line hover:border-danger text-muted hover:text-danger"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );

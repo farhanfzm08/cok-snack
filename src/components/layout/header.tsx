@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, ShoppingCart, PackageCheck, Bell, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, ShoppingCart, PackageCheck, User, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
   onOpenMobileMenu: () => void;
@@ -11,7 +13,10 @@ interface HeaderProps {
 }
 
 export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
+  const router = useRouter();
   const [currentDateStr, setCurrentDateStr] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("kasir");
+  const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
     const now = new Date();
@@ -23,7 +28,34 @@ export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
         year: "numeric",
       })
     );
+
+    // Fetch user info
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserRole((user.user_metadata?.role as string) || "kasir");
+        setUserEmail(user.email || "");
+      }
+    });
   }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  const roleLabel: Record<string, string> = {
+    owner: "👑 Owner",
+    admin: "⚙️ Admin",
+    kasir: "🧾 Kasir",
+  };
+
+  const roleBadgeVariant: Record<string, "lavender" | "mint" | "sky"> = {
+    owner: "lavender",
+    admin: "mint",
+    kasir: "sky",
+  };
 
   return (
     <header className="h-16 bg-surface border-b border-line px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
@@ -55,14 +87,16 @@ export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
           <span>Buka Kasir</span>
         </Link>
 
-        {/* Quick shortcut to Repacking */}
-        <Link
-          href="/repacking"
-          className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-mint text-success text-xs font-semibold hover:bg-mint/80 transition-colors"
-        >
-          <PackageCheck className="w-3.5 h-3.5" />
-          <span>Repacking</span>
-        </Link>
+        {/* Quick shortcut to Repacking — hide for kasir role */}
+        {userRole !== "kasir" && (
+          <Link
+            href="/repacking"
+            className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-mint text-success text-xs font-semibold hover:bg-mint/80 transition-colors"
+          >
+            <PackageCheck className="w-3.5 h-3.5" />
+            <span>Repacking</span>
+          </Link>
+        )}
 
         {/* User Role Indicator */}
         <div className="flex items-center gap-2 pl-2 border-l border-line">
@@ -71,13 +105,23 @@ export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-xs font-semibold text-foreground leading-none">
-              Owner
+              {roleLabel[userRole] || userRole}
             </p>
-            <Badge variant="mint" size="sm" className="mt-0.5">
-              Aktif
+            <Badge variant={roleBadgeVariant[userRole] || "lavender"} size="sm" className="mt-0.5">
+              {userEmail ? userEmail.split("@")[0] : "Aktif"}
             </Badge>
           </div>
         </div>
+
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className="p-2 rounded-xl text-muted hover:bg-background hover:text-foreground transition-colors"
+          aria-label="Keluar"
+          title="Keluar"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );

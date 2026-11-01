@@ -92,7 +92,7 @@ export default function TutorialPage() {
               Peta Alur Kerja (End-to-End Business Flow)
             </h2>
             <p className="text-xs text-muted mb-6">
-              Sistem SAE Snack dirancang khusus untuk menjembatani pembelian bahan mentah curah (kg) hingga menjadi produk kemasan siap jual (gram/pack) di kasir toko:
+              Sistem COK Snack dirancang khusus untuk menjembatani pembelian bahan mentah curah (kg) hingga menjadi produk kemasan siap jual (gram/pack) di kasir toko:
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
@@ -206,7 +206,7 @@ export default function TutorialPage() {
               Prinsip Pembedaan Bahan Baku vs Produk Jadi
             </h2>
             <p className="text-xs text-muted">
-              Salah satu kunci akurasi inventaris adalah tidak mencampuradukkan barang mentah dengan barang kemasan. Di SAE Snack, produk dibagi menjadi dua kategori sistem:
+              Salah satu kunci akurasi inventaris adalah tidak mencampuradukkan barang mentah dengan barang kemasan. Di COK Snack, produk dibagi menjadi dua kategori sistem:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -230,7 +230,7 @@ export default function TutorialPage() {
                   <li>Memiliki berat isi kemasan dalam gram (contoh: <code>100 gram</code>, <code>250 gram</code>).</li>
                   <li>Memiliki <strong>Harga Jual Kasir (Selling Price)</strong> dan HPP yang terbentuk dari repacking.</li>
                   <li>Tampil aktif di layar kasir POS untuk dibeli pelanggan.</li>
-                  <li>Contoh: <em>Makaroni Cikruh SAE 100g</em>, <em>Keripik Kaca Pedas 200g</em>.</li>
+                  <li>Contoh: <em>Makaroni Cikruh COK 100g</em>, <em>Keripik Kaca Pedas 200g</em>.</li>
                 </ul>
               </div>
             </div>
@@ -393,7 +393,7 @@ export default function TutorialPage() {
               <div className="p-4 rounded-xl border border-line bg-surface space-y-2">
                 <h4 className="font-bold text-xs text-foreground">Struk Nota Belanja:</h4>
                 <ul className="text-xs text-muted space-y-1.5 list-disc list-inside">
-                  <li>Format struk profesional dengan logo SAE Snack, nomor invoice, tanggal, rincian produk, dan pesan terima kasih.</li>
+                  <li>Format struk profesional dengan logo COK Snack, nomor invoice, tanggal, rincian produk, dan pesan terima kasih.</li>
                   <li>Dapat dicetak langsung ke printer thermal kasir via tombol <em>"Cetak Struk"</em>.</li>
                   <li>Pesan footer struk dapat disesuaikan di menu <strong>Pengaturan</strong>.</li>
                 </ul>
@@ -434,7 +434,7 @@ export default function TutorialPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted pt-1">
                   <div className="p-3 rounded-lg bg-surface border border-line">
                     <strong className="text-foreground block mb-1">1. Laporan Resmi PDF:</strong>
-                    Memiliki kop surat resmi SAE Snack, ringkasan eksekutif omzet & HPP, tabel data formal, dan kolom tanda tangan pemilik toko. Siap dicetak langsung ke lembar A4.
+                    Memiliki kop surat resmi COK Snack, ringkasan eksekutif omzet & HPP, tabel data formal, dan kolom tanda tangan pemilik toko. Siap dicetak langsung ke lembar A4.
                   </div>
                   <div className="p-3 rounded-lg bg-surface border border-line">
                     <strong className="text-foreground block mb-1">2. Ekspor CSV:</strong>

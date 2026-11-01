@@ -51,7 +51,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     // Load from localStorage if available
-    const saved = localStorage.getItem("sae_snack_settings");
+    const saved = localStorage.getItem("cok_snack_settings");
     if (saved) {
       try {
         setSettings(JSON.parse(saved));
@@ -85,7 +85,7 @@ export default function SettingsPage() {
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    localStorage.setItem("sae_snack_settings", JSON.stringify(settings));
+    localStorage.setItem("cok_snack_settings", JSON.stringify(settings));
     setTimeout(() => {
       setSaving(false);
       setSuccessMsg("Pengaturan toko berhasil disimpan ke sistem!");
@@ -105,7 +105,7 @@ export default function SettingsPage() {
 
       const exportBundle = {
         meta: {
-          app: "SAE Snack Management System",
+          app: "COK Snack Management System",
           version: "1.0.0",
           exported_at: new Date().toISOString(),
         },
@@ -124,7 +124,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `backup_sae_snack_${new Date().toISOString().split("T")[0]}.json`;
+      link.download = `backup_cok_snack_${new Date().toISOString().split("T")[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -146,7 +146,7 @@ export default function SettingsPage() {
           Pengaturan Toko & Sistem
         </h1>
         <p className="text-sm text-muted">
-          Kelola profil identitas toko SAE Snack, format struk, dan cadangan data database.
+          Kelola profil identitas toko COK Snack, format struk, dan cadangan data database.
         </p>
       </div>
 

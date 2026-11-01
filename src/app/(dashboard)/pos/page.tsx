@@ -104,7 +104,7 @@ export default function PosPage() {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("sae_snack_settings");
+    const saved = localStorage.getItem("cok_snack_settings");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);

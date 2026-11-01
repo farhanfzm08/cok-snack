@@ -98,12 +98,12 @@ export default function ReportsPage() {
 
   useEffect(() => {
     // Load store settings if saved
-    const saved = localStorage.getItem("sae_snack_settings");
+    const saved = localStorage.getItem("cok_snack_settings");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setStoreSettings({
-          storeName: parsed.storeName || "SAE Snack",
+          storeName: parsed.storeName || "COK Snack",
           phone: parsed.phone || "0812-3456-7890",
           address: parsed.address || "Jl. Industri Keripik No. 8, Indonesia",
         });
@@ -200,7 +200,7 @@ export default function ReportsPage() {
   const exportToCSV = () => {
     let headers: string[] = [];
     let rows: (string | number)[][] = [];
-    let filename = `laporan-sae-snack-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
+    let filename = `laporan-cok-snack-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
 
     if (activeTab === "sales") {
       headers = ["No. Invoice", "Tanggal", "Metode Bayar", "Subtotal", "Diskon", "Total Omzet", "Total HPP", "Laba Kotor"];
@@ -834,7 +834,7 @@ export default function ReportsPage() {
 
               {/* Disclaimer Footer */}
               <div className="pt-4 border-t border-gray-200 text-center text-[10px] text-gray-500 font-mono">
-                *** Dokumen laporan ini dibuat secara terkomputerisasi melalui SAE Snack Management System dan sah sebagai arsip laporan internal. ***
+                *** Dokumen laporan ini dibuat secara terkomputerisasi melalui COK Snack Management System dan sah sebagai arsip laporan internal. ***
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,7 +17,9 @@ import {
   Store,
   BookOpen,
   X,
+  User,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export interface NavItem {
   name: string;
@@ -41,6 +43,13 @@ export const navItems: NavItem[] = [
   { name: "Pengaturan", href: "/settings", icon: Settings },
 ];
 
+// Role-based menu visibility
+const ROLE_MENU: Record<string, string[]> = {
+  kasir: ["/pos", "/dashboard"],
+  admin: ["/pos", "/dashboard", "/products", "/suppliers", "/purchases", "/inventory", "/repacking", "/reports", "/tutorial"],
+  owner: ["*"],
+};
+
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -48,6 +57,30 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState<string>("kasir");
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserRole((user.user_metadata?.role as string) || "kasir");
+        setUserEmail(user.email || "");
+      }
+    });
+  }, []);
+
+  const roleBg: Record<string, string> = {
+    owner: "bg-[#E8E0F8] text-[#7C5CBF]",
+    admin: "bg-[#DDF3E4] text-green-700",
+    kasir: "bg-[#DCEBFA] text-blue-700",
+  };
+
+  const roleLabel: Record<string, string> = {
+    owner: "👑 Owner",
+    admin: "⚙️ Admin",
+    kasir: "🧾 Kasir",
+  };
 
   const content = (
     <aside className="w-64 h-full bg-surface border-r border-line flex flex-col justify-between">
@@ -83,7 +116,13 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted/80 uppercase">
             Menu Utama
           </p>
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => {
+              const allowed = ROLE_MENU[userRole] || ROLE_MENU["kasir"];
+              if (allowed[0] === "*") return true;
+              return allowed.some((r) => item.href.startsWith(r));
+            })
+            .map((item) => {
             const Icon = item.icon;
             const isActive =
               pathname === item.href ||
@@ -125,9 +164,18 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
       {/* Footer info */}
       <div className="p-4 border-t border-line bg-background/50">
-        <div className="text-xs text-muted">
-          <p className="font-semibold text-foreground">COK Snack System</p>
-          <p className="text-[11px] text-muted">Cemilan Orang Kaya • v1.0</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-lavender text-primary flex items-center justify-center shrink-0">
+            <User className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">
+              {userEmail || "COK Snack System"}
+            </p>
+            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${roleBg[userRole] || roleBg["kasir"]}`}>
+              {roleLabel[userRole] || userRole}
+            </span>
+          </div>
         </div>
       </div>
     </aside>

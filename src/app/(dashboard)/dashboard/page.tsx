@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -170,11 +170,11 @@ export default function DashboardPage() {
       <div className="bg-surface border border-line rounded-3xl p-6 sm:p-7 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 mb-1">
-            <Badge variant="lavender">SAE Snack System Aktif</Badge>
+            <Badge variant="lavender">COK Snack System Aktif</Badge>
             <Badge variant="mint">Database Terhubung</Badge>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Halo, Selamat Datang di Dashboard SAE Snack!
+            Halo, Selamat Datang di Dashboard COK Snack!
           </h1>
           <p className="text-sm text-muted max-w-xl">
             Sistem manajemen stok curah kg, produksi repacking ke gram, dan kasir
@@ -302,7 +302,7 @@ export default function DashboardPage() {
               action={
                 <Link href="/pos">
                   <Button variant="ghost" size="sm">
-                    <span>Buka Kasir</span>
+                    <span>Lihat Semua</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
