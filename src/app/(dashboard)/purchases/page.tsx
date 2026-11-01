@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
 import { 
@@ -973,7 +975,7 @@ export default function PurchasesPage() {
                         <div>
                           <span className="font-semibold text-foreground">{it.product?.name}</span>
                           <span className="text-muted block">
-                            {it.quantity} {it.product?.unit || "kg"} × Rp{" "}
+                            {it.quantity} {it.product?.unit || "kg"} Ã— Rp{" "}
                             {Number(it.cost_per_unit).toLocaleString("id-ID")}
                           </span>
                         </div>

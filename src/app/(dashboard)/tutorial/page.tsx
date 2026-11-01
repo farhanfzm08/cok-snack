@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+export const dynamic = 'force-dynamic';
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -324,8 +326,8 @@ export default function TutorialPage() {
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-line">
                   <span className="text-muted block text-[11px]">2. Target Teoritis:</span>
-                  <span className="font-mono font-bold text-foreground block mt-1">(Kg × 1000) ÷ Gram Kemasan</span>
-                  <span className="text-[11px] text-muted block mt-0.5">5.000g ÷ 100g = 50 bungkus</span>
+                  <span className="font-mono font-bold text-foreground block mt-1">(Kg Ã— 1000) Ã· Gram Kemasan</span>
+                  <span className="text-[11px] text-muted block mt-0.5">5.000g Ã· 100g = 50 bungkus</span>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-line">
                   <span className="text-muted block text-[11px]">3. Susut Produksi (Shrinkage):</span>
@@ -347,7 +349,7 @@ export default function TutorialPage() {
               </p>
               <div className="p-3 rounded-lg bg-surface border border-line text-xs font-mono">
                 Total Biaya = Rp 150.000 (bahan) + Rp 9.600 (kemasan) = Rp 159.600<br />
-                <strong>HPP per Bungkus = Rp 159.600 ÷ 48 bungkus = Rp 3.325 / bungkus</strong>
+                <strong>HPP per Bungkus = Rp 159.600 Ã· 48 bungkus = Rp 3.325 / bungkus</strong>
               </div>
               <p className="text-[11px] text-muted italic">
                 * Jika Anda menjual dengan harga Rp 6.000/bungkus di kasir, maka keuntungan kotor Anda adalah Rp 2.675 per bungkus (Margin 44.5%).

@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
 import {
@@ -537,7 +539,7 @@ export default function RepackingPage() {
                     />
                     {!isStockSufficient && (
                       <p className="text-[11px] text-danger font-semibold mt-1">
-                        ⚠️ Stok bahan baku tidak mencukupi (Tersedia: {selectedRawProduct?.current_stock} kg).
+                        âš ï¸ Stok bahan baku tidak mencukupi (Tersedia: {selectedRawProduct?.current_stock} kg).
                       </p>
                     )}
                   </div>
@@ -550,7 +552,7 @@ export default function RepackingPage() {
                     </label>
                     {selectedRawProduct?.cost_price ? (
                       <span className="text-[11px] text-primary font-medium">
-                        Otomatis: {rawKgUsed} kg × {formatRupiah(selectedRawProduct.cost_price)}
+                        Otomatis: {rawKgUsed} kg Ã— {formatRupiah(selectedRawProduct.cost_price)}
                       </span>
                     ) : null}
                   </div>
@@ -702,7 +704,7 @@ export default function RepackingPage() {
                         className="w-full px-3 py-1.5 bg-surface border border-line rounded-xl text-xs font-semibold"
                       />
                       <p className="text-[10px] text-muted mt-1">
-                        Total: {actualPacksNum} bks × Rp{plasticPerPcs || 0} = <strong className="text-foreground">{formatRupiah(packagingCostNum)}</strong>
+                        Total: {actualPacksNum} bks Ã— Rp{plasticPerPcs || 0} = <strong className="text-foreground">{formatRupiah(packagingCostNum)}</strong>
                       </p>
                     </div>
 
@@ -720,7 +722,7 @@ export default function RepackingPage() {
                         className="w-full px-3 py-1.5 bg-surface border border-line rounded-xl text-xs font-semibold"
                       />
                       <p className="text-[10px] text-muted mt-1">
-                        Total: {actualPacksNum} bks × Rp{labelPerPcs || 0} = <strong className="text-foreground">{formatRupiah(labelCostNum)}</strong>
+                        Total: {actualPacksNum} bks Ã— Rp{labelPerPcs || 0} = <strong className="text-foreground">{formatRupiah(labelCostNum)}</strong>
                       </p>
                     </div>
                   </div>
@@ -787,7 +789,7 @@ export default function RepackingPage() {
                     </span>
                   </div>
                   <p className="text-[10px] text-muted italic">
-                    * Rumus: (Biaya Bahan {formatRupiah(rawCostNum)} + Kemasan {formatRupiah(packagingCostNum)} + Stiker {formatRupiah(labelCostNum)}) ÷ {actualPacksNum} bungkus
+                    * Rumus: (Biaya Bahan {formatRupiah(rawCostNum)} + Kemasan {formatRupiah(packagingCostNum)} + Stiker {formatRupiah(labelCostNum)}) Ã· {actualPacksNum} bungkus
                   </p>
                 </div>
               </div>

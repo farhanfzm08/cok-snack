@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
 import {
@@ -631,7 +633,7 @@ export default function ReportsPage() {
                   Pusat Pengemasan Ulang (Repacking) & Penjualan Aneka Snack Berkualitas
                 </p>
                 <p className="text-[11px] text-gray-600 mt-0.5">
-                  {storeSettings.address} • Telp/WhatsApp: {storeSettings.phone}
+                  {storeSettings.address} â€¢ Telp/WhatsApp: {storeSettings.phone}
                 </p>
                 <div className="border-b border-black mt-2"></div>
               </div>

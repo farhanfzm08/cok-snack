@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
 import {
@@ -500,7 +502,7 @@ export default function PosPage() {
                       {item.product.name}
                     </p>
                     <p className="text-[11px] text-muted">
-                      {formatRupiah(item.unit_price)} × {item.quantity} ={" "}
+                      {formatRupiah(item.unit_price)} Ã— {item.quantity} ={" "}
                       <strong className="text-foreground">{formatRupiah(item.subtotal)}</strong>
                     </p>
                   </div>
@@ -754,7 +756,7 @@ export default function PosPage() {
                     <div className="font-bold text-black truncate">{item.product.name}</div>
                     <div className="flex justify-between text-[10px] text-gray-700 pl-2">
                       <span>
-                        {item.quantity} × {Number(item.unit_price).toLocaleString("id-ID")}
+                        {item.quantity} Ã— {Number(item.unit_price).toLocaleString("id-ID")}
                       </span>
                       <span className="font-semibold text-black">
                         {Number(item.subtotal).toLocaleString("id-ID")}

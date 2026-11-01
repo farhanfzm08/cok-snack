@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -496,9 +498,9 @@ export default function SuppliersPage() {
                         <span className="text-[11px] font-semibold text-muted">Item Bahan Mentah:</span>
                         {inv.purchase_items.map((it: any, i: number) => (
                           <div key={i} className="flex justify-between text-[11px] text-muted">
-                            <span>• {it.product?.name}</span>
+                            <span>â€¢ {it.product?.name}</span>
                             <span>
-                              {it.quantity} {it.product?.unit || "kg"} × Rp {Number(it.cost_per_unit).toLocaleString("id-ID")}
+                              {it.quantity} {it.product?.unit || "kg"} Ã— Rp {Number(it.cost_per_unit).toLocaleString("id-ID")}
                             </span>
                           </div>
                         ))}
