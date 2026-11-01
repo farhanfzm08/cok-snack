@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, ShoppingCart, PackageCheck, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 
@@ -78,28 +77,8 @@ export function Header({ onOpenMobileMenu, title = "Dashboard" }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Quick shortcut to Kasir POS */}
-        <Link
-          href="/pos"
-          className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-peach text-[#A04128] text-xs font-semibold hover:bg-peach/80 transition-colors"
-        >
-          <ShoppingCart className="w-3.5 h-3.5" />
-          <span>Buka Kasir</span>
-        </Link>
-
-        {/* Quick shortcut to Repacking — hide for kasir role */}
-        {userRole !== "kasir" && (
-          <Link
-            href="/repacking"
-            className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-mint text-success text-xs font-semibold hover:bg-mint/80 transition-colors"
-          >
-            <PackageCheck className="w-3.5 h-3.5" />
-            <span>Repacking</span>
-          </Link>
-        )}
-
         {/* User Role Indicator */}
-        <div className="flex items-center gap-2 pl-2 border-l border-line">
+        <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-lavender text-primary flex items-center justify-center font-bold text-xs">
             <User className="w-4 h-4" />
           </div>

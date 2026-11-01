@@ -1,22 +1,33 @@
--- Fungsi untuk set role user (dijalankan sebagai admin)
--- Cara pakai: panggil fungsi ini di SQL Editor Supabase
+-- ==============================================================================
+-- PANDUAN PENGATURAN ROLE USER (Owner, Admin, Kasir)
+-- ==============================================================================
+-- Jalankan perintah ini di SQL Editor Supabase setelah user dibuat.
 
--- Buat user owner (ganti email & password sesuai keinginan)
--- CATATAN: User dibuat via Supabase Auth Dashboard atau API
--- Setelah user dibuat, set role-nya via SQL berikut:
-
--- Update role user berdasarkan email (jalankan per user)
--- Contoh untuk set user sebagai owner:
+-- 1. Mengatur user sebagai OWNER (Akses Penuh)
 UPDATE auth.users 
-SET raw_user_meta_data = raw_user_meta_data || '{"role": "owner"}'::jsonb
+SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "owner"}'::jsonb
 WHERE email = 'owner@coksnack.com';
 
--- Contoh untuk set user sebagai admin:
+UPDATE public.profiles
+SET role = 'owner'
+WHERE id IN (SELECT id FROM auth.users WHERE email = 'owner@coksnack.com');
+
+
+-- 2. Mengatur user sebagai ADMIN (Operasional Toko & Gudang)
 UPDATE auth.users 
-SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}'::jsonb
+SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
 WHERE email = 'admin@coksnack.com';
 
--- Contoh untuk set user sebagai kasir:
+UPDATE public.profiles
+SET role = 'admin'
+WHERE id IN (SELECT id FROM auth.users WHERE email = 'admin@coksnack.com');
+
+
+-- 3. Mengatur user sebagai KASIR (Hanya POS & Ringkasan Dashboard)
 UPDATE auth.users 
-SET raw_user_meta_data = raw_user_meta_data || '{"role": "kasir"}'::jsonb
+SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "kasir"}'::jsonb
 WHERE email = 'kasir@coksnack.com';
+
+UPDATE public.profiles
+SET role = 'kasir'
+WHERE id IN (SELECT id FROM auth.users WHERE email = 'kasir@coksnack.com');
