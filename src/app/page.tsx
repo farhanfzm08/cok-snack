@@ -74,9 +74,18 @@ export default function Home() {
           Selamat datang di SAE Snack
         </h2>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">
-          Ini adalah tampilan awal aplikasi. Fitur-fitur di bawah akan kita
-          bangun satu per satu, mulai dari database sampai kasir.
+          Ini adalah sistem manajemen stok dan kasir untuk usaha snack repack SAE.
+          Database Supabase telah terhubung dan siap digunakan.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark transition-all"
+          >
+            <span>Buka Dashboard Sistem</span>
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </section>
 
       <section className="mt-8">
