@@ -17,6 +17,9 @@ import {
   Layers,
   ArrowRight,
   Trash2,
+  Pencil,
+  Sparkles,
+  Link2,
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,7 @@ interface Product {
   sku: string;
   name: string;
   category_id: string | null;
+  raw_material_product_id?: string | null;
   type: "raw_material" | "finished_good";
   unit: string;
   package_weight_grams: number;
@@ -74,7 +78,20 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Form Product state
+  // Add Mode Selection: 'bundle' (Paket Bahan + Kemasan) vs 'single' (Satu Produk)
+  const [addMode, setAddMode] = useState<"bundle" | "single">("bundle");
+
+  // Bundle Add Form State
+  const [bundleBaseName, setBundleBaseName] = useState("");
+  const [bundleCategory, setBundleCategory] = useState("");
+  const [bundleRawCostPerKg, setBundleRawCostPerKg] = useState("40000");
+  const [bundleRawStock, setBundleRawStock] = useState("0");
+  const [bundleWithRepack, setBundleWithRepack] = useState(true);
+  const [bundleRepackWeight, setBundleRepackWeight] = useState("100");
+  const [bundleRepackPrice, setBundleRepackPrice] = useState("8000");
+  const [bundleRepackStock, setBundleRepackStock] = useState("0");
+
+  // Single Form Product state
   const [prodName, setProdName] = useState("");
   const [prodSku, setProdSku] = useState("");
   const [prodType, setProdType] = useState<"raw_material" | "finished_good">("finished_good");
@@ -84,6 +101,21 @@ export default function ProductsPage() {
   const [prodPrice, setProdPrice] = useState("5000");
   const [prodCostPrice, setProdCostPrice] = useState("35000");
   const [prodMinStock, setProdMinStock] = useState("5");
+
+  // Edit Product Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editId, setEditId] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editSku, setEditSku] = useState("");
+  const [editType, setEditType] = useState<"raw_material" | "finished_good">("finished_good");
+  const [editCategory, setEditCategory] = useState("");
+  const [editUnit, setEditUnit] = useState("pack");
+  const [editWeight, setEditWeight] = useState("100");
+  const [editPrice, setEditPrice] = useState("0");
+  const [editCostPrice, setEditCostPrice] = useState("0");
+  const [editMinStock, setEditMinStock] = useState("5");
+  const [editRawMaterialId, setEditRawMaterialId] = useState("");
+  const [isEditingSubmitting, setIsEditingSubmitting] = useState(false);
 
   // Form Category state
   const [catName, setCatName] = useState("");
@@ -229,7 +261,149 @@ export default function ProductsPage() {
     }
   };
 
-  // Handle Save Product
+  // Handle Save Bundle Product (Bahan Baku + Kemasan Sekaligus)
+  const handleSaveBundleProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bundleBaseName.trim()) {
+      showToast("error", "Nama snack wajib diisi!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const cleanName = bundleBaseName.trim();
+      const codeSuffix = cleanName
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 8);
+
+      // 1. Simpan Bahan Baku Curah (kg)
+      const rawPayload = {
+        name: `${cleanName} (Curah)`,
+        sku: `BAHAN-${codeSuffix}-${Date.now().toString().slice(-4)}`,
+        type: "raw_material",
+        category_id: bundleCategory || null,
+        unit: "kg",
+        package_weight_grams: 0,
+        selling_price: 0,
+        cost_price: Number(bundleRawCostPerKg) || 0,
+        min_stock_alert: 5,
+        current_stock: Number(bundleRawStock) || 0,
+        is_active: true,
+      };
+
+      const { data: rawData, error: rawErr } = await supabase
+        .from("products")
+        .insert([rawPayload])
+        .select()
+        .single();
+
+      if (rawErr) throw rawErr;
+
+      // 2. Jika dicentang, buat Produk Kemasan Repack sekaligus dan hubungkan dengan Bahan
+      if (bundleWithRepack && rawData) {
+        const weight = Number(bundleRepackWeight) || 100;
+        const finishedPayload = {
+          name: `${cleanName} ${weight}g`,
+          sku: `SNK-${codeSuffix}-${weight}G`,
+          type: "finished_good",
+          category_id: bundleCategory || null,
+          raw_material_product_id: rawData.id,
+          unit: "pack",
+          package_weight_grams: weight,
+          selling_price: Number(bundleRepackPrice) || 0,
+          cost_price: 0,
+          min_stock_alert: 10,
+          current_stock: Number(bundleRepackStock) || 0,
+          is_active: true,
+        };
+
+        const { error: finErr } = await supabase.from("products").insert([finishedPayload]);
+        if (finErr) throw finErr;
+      }
+
+      showToast(
+        "success",
+        bundleWithRepack
+          ? `Sukses! Bahan curah "${cleanName}" dan kemasan repack ${bundleRepackWeight}g berhasil dibuat dan terhubung otomatis!`
+          : `Sukses! Bahan curah "${cleanName}" berhasil dibuat!`
+      );
+
+      // Reset
+      setBundleBaseName("");
+      setBundleCategory("");
+      setBundleRawCostPerKg("40000");
+      setBundleRepackWeight("100");
+      setBundleRepackPrice("8000");
+      setIsProductModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      showToast("error", "Gagal menyimpan paket produk: " + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle Open Edit Modal
+  const handleOpenEditModal = (p: Product) => {
+    setEditId(p.id);
+    setEditName(p.name);
+    setEditSku(p.sku);
+    setEditType(p.type);
+    setEditCategory(p.category_id || "");
+    setEditUnit(p.unit);
+    setEditWeight(p.package_weight_grams?.toString() || "0");
+    setEditPrice(p.selling_price?.toString() || "0");
+    setEditCostPrice(p.cost_price?.toString() || "0");
+    setEditMinStock(p.min_stock_alert?.toString() || "5");
+    setEditRawMaterialId(p.raw_material_product_id || "");
+    setIsEditModalOpen(true);
+  };
+
+  // Handle Save Edit Product
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim() || !editSku.trim()) {
+      showToast("error", "Nama produk dan SKU wajib diisi!");
+      return;
+    }
+
+    setIsEditingSubmitting(true);
+    try {
+      const payload: Record<string, any> = {
+        name: editName.trim(),
+        sku: editSku.trim().toUpperCase(),
+        category_id: editCategory || null,
+        min_stock_alert: Number(editMinStock) || 5,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (editType === "raw_material") {
+        payload.unit = "kg";
+        payload.cost_price = Number(editCostPrice) || 0;
+        payload.selling_price = 0;
+        payload.package_weight_grams = 0;
+      } else {
+        payload.unit = editUnit || "pack";
+        payload.package_weight_grams = Number(editWeight) || 0;
+        payload.selling_price = Number(editPrice) || 0;
+        payload.raw_material_product_id = editRawMaterialId || null;
+      }
+
+      const { error } = await supabase.from("products").update(payload).eq("id", editId);
+      if (error) throw error;
+
+      showToast("success", `Produk "${editName}" berhasil diperbarui!`);
+      setIsEditModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      showToast("error", "Gagal memperbarui produk: " + err.message);
+    } finally {
+      setIsEditingSubmitting(false);
+    }
+  };
+
+  // Handle Save Single Product
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prodName.trim() || !prodSku.trim()) {
@@ -448,12 +622,16 @@ export default function ProductsPage() {
                     <th className="py-3 px-3">Ukuran Satuan</th>
                     <th className="py-3 px-3">Harga Jual</th>
                     <th className="py-3 px-3">Stok Saat Ini</th>
-                    <th className="py-3 px-3 text-right">Status</th>
+                    <th className="py-3 px-3 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/60">
                   {filteredProducts.map((p) => {
                     const isLowStock = p.current_stock <= p.min_stock_alert;
+                    const linkedRawName = p.raw_material_product_id
+                      ? products.find((r) => r.id === p.raw_material_product_id)?.name
+                      : null;
+
                     return (
                       <tr key={p.id} className="hover:bg-background/60 transition-colors">
                         <td className="py-3.5 px-3">
@@ -474,6 +652,12 @@ export default function ProductsPage() {
                             {p.categories?.name && (
                               <span className="text-[11px] text-muted">
                                 {p.categories.name}
+                              </span>
+                            )}
+                            {linkedRawName && (
+                              <span className="inline-flex items-center gap-1 text-[10px] bg-lavender/60 text-primary-dark font-medium px-2 py-0.5 rounded-md mt-0.5">
+                                <Link2 className="w-2.5 h-2.5 text-primary" />
+                                <span>Dari: {linkedRawName}</span>
                               </span>
                             )}
                           </div>
@@ -516,6 +700,13 @@ export default function ProductsPage() {
                         <td className="py-3.5 px-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
+                              onClick={() => handleOpenEditModal(p)}
+                              className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-lavender/50 transition-colors"
+                              title="Edit Detail Produk"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => {
                                 setSelectedProductForStock(p);
                                 setStockAddAmount(p.type === "raw_material" ? "5" : "50");
@@ -532,7 +723,7 @@ export default function ProductsPage() {
                               className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-red-50 transition-colors"
                               title="Hapus Produk"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -621,48 +812,411 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4 text-sm">
-              {/* Type Switch */}
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1.5">
-                  Tipe Produk
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProdType("finished_good");
-                      setProdUnit("pack");
-                    }}
-                    className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all ${
-                      prodType === "finished_good"
-                        ? "bg-mint border-success text-success shadow-2xs font-bold"
-                        : "bg-background border-line text-muted"
-                    }`}
-                  >
-                    Produk Jadi Repack (Kemasan)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProdType("raw_material");
-                      setProdUnit("kg");
-                      setProdWeight("0");
-                      setProdPrice("0");
-                    }}
-                    className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all ${
-                      prodType === "raw_material"
-                        ? "bg-lavender border-primary text-primary-dark shadow-2xs font-bold"
-                        : "bg-background border-line text-muted"
-                    }`}
-                  >
-                    Bahan Baku Curah (Kiloan)
-                  </button>
-                </div>
-              </div>
+            {/* Mode Switcher: Paket Bahan+Kemasan vs Manual */}
+            <div className="flex p-1 bg-background border border-line rounded-2xl mb-4 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setAddMode("bundle")}
+                className={`flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                  addMode === "bundle"
+                    ? "bg-primary text-white shadow-xs font-bold"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Paket Lengkap (Bahan + Kemasan Otomatis)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddMode("single")}
+                className={`py-2 px-3 rounded-xl transition-all ${
+                  addMode === "single"
+                    ? "bg-surface text-foreground shadow-2xs font-bold border border-line"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <span>Satu Produk Saja</span>
+              </button>
+            </div>
 
-              {/* SKU & Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* FORM 1: PAKET OTOMATIS (Bahan Curah + Kemasan Sekaligus) */}
+            {addMode === "bundle" ? (
+              <form onSubmit={handleSaveBundleProduct} className="space-y-4 text-sm">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Nama Snack / Produk Utama *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={bundleBaseName}
+                    onChange={(e) => setBundleBaseName(e.target.value)}
+                    placeholder="Contoh: Basreng Pedas Daun Jeruk"
+                    className="w-full px-3.5 py-2.5 bg-background border border-line rounded-xl text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                  <p className="text-[11px] text-muted mt-1">
+                    Sistem akan otomatis membuat Bahan Curah kg dan Kemasan gram dengan nama ini.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Kategori Snack
+                  </label>
+                  <select
+                    value={bundleCategory}
+                    onChange={(e) => setBundleCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  >
+                    <option value="">Pilih Kategori (Opsional)...</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Bagian 1: Bahan Curah */}
+                <div className="p-4 rounded-2xl bg-lavender/30 border border-primary/20 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-primary">
+                    <Boxes className="w-4 h-4" />
+                    <span>1. Bahan Baku Curah (Kiloan)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-muted mb-1">
+                        Harga Beli / Modal Bahan per Kg (Rp) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="any"
+                        value={bundleRawCostPerKg}
+                        onChange={(e) => setBundleRawCostPerKg(e.target.value)}
+                        placeholder="40000"
+                        className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-muted mb-1">
+                        Stok Awal Bahan (Kg)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={bundleRawStock}
+                        onChange={(e) => setBundleRawStock(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bagian 2: Produk Kemasan Jadi */}
+                <div className="p-4 rounded-2xl bg-mint/30 border border-success/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-success">
+                      <Package className="w-4 h-4" />
+                      <span>2. Produk Kemasan Repack (Siap Jual)</span>
+                    </div>
+                    <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer font-medium">
+                      <input
+                        type="checkbox"
+                        checked={bundleWithRepack}
+                        onChange={(e) => setBundleWithRepack(e.target.checked)}
+                        className="rounded border-line text-primary focus:ring-primary"
+                      />
+                      <span>Buat Kemasan Sekaligus</span>
+                    </label>
+                  </div>
+
+                  {bundleWithRepack && (
+                    <div className="grid grid-cols-3 gap-2.5 pt-1">
+                      <div>
+                        <label className="block text-xs font-semibold text-muted mb-1">
+                          Ukuran (Gram) *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          value={bundleRepackWeight}
+                          onChange={(e) => setBundleRepackWeight(e.target.value)}
+                          placeholder="100"
+                          className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-muted mb-1">
+                          Harga Jual Kasir (Rp) *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          value={bundleRepackPrice}
+                          onChange={(e) => setBundleRepackPrice(e.target.value)}
+                          placeholder="8000"
+                          className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-success"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-muted mb-1">
+                          Stok Awal (Bks)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={bundleRepackStock}
+                          onChange={(e) => setBundleRepackStock(e.target.value)}
+                          placeholder="0"
+                          className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-background rounded-xl border border-line text-xs text-muted flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-primary shrink-0" />
+                  <span>
+                    Bahan dan Kemasan akan otomatis terhubung. Saat repacking, produk jadi otomatis cocok!
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-line mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsProductModalOpen(false)}
+                  >
+                    Batal
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
+                    <Sparkles className="w-3.5 h-3.5 mr-1" />
+                    Simpan Bahan & Kemasan Sekaligus
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              /* FORM 2: SATU PRODUK MANUAL */
+              <form onSubmit={handleSaveProduct} className="space-y-4 text-sm">
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1.5">
+                    Tipe Produk
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProdType("finished_good");
+                        setProdUnit("pack");
+                      }}
+                      className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all ${
+                        prodType === "finished_good"
+                          ? "bg-mint border-success text-success shadow-2xs font-bold"
+                          : "bg-background border-line text-muted"
+                      }`}
+                    >
+                      Produk Jadi Repack (Kemasan)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProdType("raw_material");
+                        setProdUnit("kg");
+                        setProdWeight("0");
+                        setProdPrice("0");
+                      }}
+                      className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all ${
+                        prodType === "raw_material"
+                          ? "bg-lavender border-primary text-primary-dark shadow-2xs font-bold"
+                          : "bg-background border-line text-muted"
+                      }`}
+                    >
+                      Bahan Baku Curah (Kiloan)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      SKU / Kode Produk *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={prodSku}
+                      onChange={(e) => setProdSku(e.target.value)}
+                      placeholder="Contoh: MKR-100G"
+                      className="w-full px-3 py-2 bg-background border border-line rounded-xl uppercase font-mono text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Kategori
+                    </label>
+                    <select
+                      value={prodCategory}
+                      onChange={(e) => setProdCategory(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    >
+                      <option value="">Pilih Kategori...</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Nama Produk *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={prodName}
+                    onChange={(e) => setProdName(e.target.value)}
+                    placeholder={
+                      prodType === "raw_material"
+                        ? "Contoh: Makaroni Cikruh Curah Super"
+                        : "Contoh: Makaroni Cikruh Pedas Daun Jeruk"
+                    }
+                    className="w-full px-3 py-2 bg-background border border-line rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+
+                {prodType === "raw_material" && (
+                  <div className="p-3 bg-lavender/40 rounded-2xl border border-primary/20">
+                    <label className="block text-xs font-semibold text-foreground mb-1">
+                      Harga Beli / Modal Bahan per Kg (Rp) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="any"
+                      value={prodCostPrice}
+                      onChange={(e) => setProdCostPrice(e.target.value)}
+                      placeholder="35000"
+                      className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-primary"
+                    />
+                  </div>
+                )}
+
+                {prodType === "finished_good" && (
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-mint/30 rounded-2xl border border-success/20">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">
+                        Ukuran Kemasan (Gram) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        step="any"
+                        value={prodWeight}
+                        onChange={(e) => setProdWeight(e.target.value)}
+                        placeholder="100"
+                        className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">
+                        Harga Jual (Rp) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="any"
+                        value={prodPrice}
+                        onChange={(e) => setProdPrice(e.target.value)}
+                        placeholder="5000"
+                        className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-primary"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Satuan Persediaan
+                    </label>
+                    <input
+                      type="text"
+                      value={prodUnit}
+                      onChange={(e) => setProdUnit(e.target.value)}
+                      disabled={prodType === "raw_material"}
+                      className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Batas Minimum Stok Alert
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={prodMinStock}
+                      onChange={(e) => setProdMinStock(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-line mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsProductModalOpen(false)}
+                  >
+                    Batal
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
+                    Simpan Produk
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT PRODUK */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
+          <div className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-primary" />
+                  <span>Edit Detail Produk</span>
+                </h3>
+                <p className="text-xs text-muted">Perbarui informasi harga, ukuran, atau relasi bahan</p>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1.5 text-muted hover:text-foreground rounded-xl"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProduct} className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">
                     SKU / Kode Produk *
@@ -670,9 +1224,8 @@ export default function ProductsPage() {
                   <input
                     type="text"
                     required
-                    value={prodSku}
-                    onChange={(e) => setProdSku(e.target.value)}
-                    placeholder="Contoh: MKR-100G"
+                    value={editSku}
+                    onChange={(e) => setEditSku(e.target.value)}
                     className="w-full px-3 py-2 bg-background border border-line rounded-xl uppercase font-mono text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
@@ -681,8 +1234,8 @@ export default function ProductsPage() {
                     Kategori
                   </label>
                   <select
-                    value={prodCategory}
-                    onChange={(e) => setProdCategory(e.target.value)}
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   >
                     <option value="">Pilih Kategori...</option>
@@ -702,19 +1255,14 @@ export default function ProductsPage() {
                 <input
                   type="text"
                   required
-                  value={prodName}
-                  onChange={(e) => setProdName(e.target.value)}
-                  placeholder={
-                    prodType === "raw_material"
-                      ? "Contoh: Makaroni Cikruh Curah Super"
-                      : "Contoh: Makaroni Cikruh Pedas Daun Jeruk"
-                  }
-                  className="w-full px-3 py-2 bg-background border border-line rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-line rounded-xl text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
-              {/* Specific fields for Raw Material */}
-              {prodType === "raw_material" && (
+              {/* Jika Bahan Baku Curah */}
+              {editType === "raw_material" && (
                 <div className="p-3 bg-lavender/40 rounded-2xl border border-primary/20">
                   <label className="block text-xs font-semibold text-foreground mb-1">
                     Harga Beli / Modal Bahan per Kg (Rp) *
@@ -724,66 +1272,87 @@ export default function ProductsPage() {
                     required
                     min="0"
                     step="any"
-                    value={prodCostPrice}
-                    onChange={(e) => setProdCostPrice(e.target.value)}
-                    placeholder="35000"
+                    value={editCostPrice}
+                    onChange={(e) => setEditCostPrice(e.target.value)}
                     className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-primary"
                   />
                   <p className="text-[10px] text-muted mt-1">
-                    Nilai ini akan otomatis digunakan untuk menghitung modal & HPP saat repacking snack curah ini.
+                    Digunakan untuk menghitung HPP otomatis saat repacking bahan ini.
                   </p>
                 </div>
               )}
 
-              {/* Specific fields for Finished Good */}
-              {prodType === "finished_good" && (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-mint/30 rounded-2xl border border-success/20">
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1">
-                      Ukuran Kemasan (Gram) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      step="any"
-                      value={prodWeight}
-                      onChange={(e) => setProdWeight(e.target.value)}
-                      placeholder="100"
-                      className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-semibold"
-                    />
-                    <p className="text-[10px] text-muted mt-0.5">Misal: 50, 100, 150, 250</p>
+              {/* Jika Produk Jadi Kemasan */}
+              {editType === "finished_good" && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-mint/30 rounded-2xl border border-success/20">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">
+                        Ukuran Kemasan (Gram) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        step="any"
+                        value={editWeight}
+                        onChange={(e) => setEditWeight(e.target.value)}
+                        className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">
+                        Harga Jual Kasir (Rp) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="any"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                        className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-success"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1">
-                      Harga Jual (Rp) *
+
+                  {/* Hubungkan ke Bahan Baku Induk */}
+                  <div className="p-3 bg-background rounded-2xl border border-line">
+                    <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-primary" />
+                      <span>Bahan Baku Curah Induk (Relasi Repacking)</span>
                     </label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="any"
-                      value={prodPrice}
-                      onChange={(e) => setProdPrice(e.target.value)}
-                      placeholder="5000"
-                      className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-bold text-primary"
-                    />
-                    <p className="text-[10px] text-muted mt-0.5">Format angka bersih</p>
+                    <select
+                      value={editRawMaterialId}
+                      onChange={(e) => setEditRawMaterialId(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    >
+                      <option value="">Tidak ada relasi khusus</option>
+                      {products
+                        .filter((p) => p.type === "raw_material" && p.id !== editId)
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} ({r.sku})
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-[10px] text-muted mt-1">
+                      Saat repacking bahan curah ini, kemasan ini akan otomatis terpilih.
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Minimum Stock Alert */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">
-                    Satuan Persediaan
+                    Satuan
                   </label>
                   <input
                     type="text"
-                    value={prodUnit}
-                    onChange={(e) => setProdUnit(e.target.value)}
-                    disabled={prodType === "raw_material"}
+                    value={editUnit}
+                    onChange={(e) => setEditUnit(e.target.value)}
+                    disabled={editType === "raw_material"}
                     className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs"
                   />
                 </div>
@@ -794,25 +1363,24 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     min="0"
-                    value={prodMinStock}
-                    onChange={(e) => setProdMinStock(e.target.value)}
+                    value={editMinStock}
+                    onChange={(e) => setEditMinStock(e.target.value)}
                     className="w-full px-3 py-2 bg-background border border-line rounded-xl text-xs"
                   />
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-line mt-4">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsProductModalOpen(false)}
+                  onClick={() => setIsEditModalOpen(false)}
                 >
                   Batal
                 </Button>
-                <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
-                  Simpan Produk
+                <Button type="submit" variant="primary" size="sm" isLoading={isEditingSubmitting}>
+                  Simpan Perubahan
                 </Button>
               </div>
             </form>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +31,8 @@ interface Product {
   package_weight_grams: number;
   current_stock: number;
   cost_price?: number;
+  category_id?: string | null;
+  raw_material_product_id?: string | null;
 }
 
 interface RepackingOrder {
@@ -105,7 +107,7 @@ export default function RepackingPage() {
       // 1. Fetch products
       const { data: prodData } = await supabase
         .from("products")
-        .select("id, name, sku, type, unit, package_weight_grams, current_stock, cost_price")
+        .select("*")
         .eq("is_active", true);
 
       if (prodData) {
@@ -161,13 +163,43 @@ export default function RepackingPage() {
     }
   };
 
-  // Handle Raw Product change with auto calculation of cost
+  // Helper cerdas mencari produk jadi yang nyambung dengan bahan mentah
+  const getMatchingFinishedGoods = (rawId: string) => {
+    const raw = rawMaterials.find((r) => r.id === rawId);
+    if (!raw) return finishedGoods;
+
+    // Filter berdasarkan relasi raw_material_product_id, kategori, atau kemiripan kata nama (misal: "Basreng")
+    const rawWords = raw.name
+      .toLowerCase()
+      .split(/[\s,.-]+/)
+      .filter((w) => w.length > 2 && !["curah", "kiloan", "super", "mentah", "bahan"].includes(w));
+
+    const matched = finishedGoods.filter((f) => {
+      // 1. Relasi langsung
+      if (f.raw_material_product_id && f.raw_material_product_id === rawId) return true;
+      // 2. Kategori yang sama
+      if (f.category_id && raw.category_id && f.category_id === raw.category_id) return true;
+      // 3. Nama mirip
+      const fName = f.name.toLowerCase();
+      return rawWords.some((w) => fName.includes(w));
+    });
+
+    return matched;
+  };
+
+  // Handle Raw Product change with auto calculation of cost & auto select matching finished product!
   const handleSelectRawProduct = (id: string) => {
     setSelectedRawId(id);
     const prod = rawMaterials.find((p) => p.id === id);
     if (prod && prod.cost_price) {
       const autoCost = (Number(rawKgUsed) || 0) * prod.cost_price;
       setRawCost(autoCost.toString());
+    }
+
+    // OTOMATIS: Pilih produk jadi yang nyambung dengan bahan ini
+    const matching = getMatchingFinishedGoods(id);
+    if (matching.length > 0) {
+      handleSelectFinishedProduct(matching[0].id);
     }
   };
 
@@ -331,11 +363,7 @@ export default function RepackingPage() {
               return;
             }
             const firstRaw = rawMaterials[0];
-            setSelectedRawId(firstRaw.id);
-            if (firstRaw.cost_price) {
-              setRawCost(((Number(rawKgUsed) || 0) * firstRaw.cost_price).toString());
-            }
-            handleSelectFinishedProduct(finishedGoods[0].id);
+            handleSelectRawProduct(firstRaw.id);
             setIsModalOpen(true);
           }}
         >
@@ -589,11 +617,32 @@ export default function RepackingPage() {
                       onChange={(e) => handleSelectFinishedProduct(e.target.value)}
                       className="w-full px-3 py-2 bg-surface border border-line rounded-xl text-xs font-semibold"
                     >
-                      {finishedGoods.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.package_weight_grams} gram)
-                        </option>
-                      ))}
+                      {(() => {
+                        const matching = getMatchingFinishedGoods(selectedRawId);
+                        const others = finishedGoods.filter((f) => !matching.some((m) => m.id === f.id));
+                        return (
+                          <>
+                            {matching.length > 0 && (
+                              <optgroup label="⭐️ Kemasan Terhubung (Otomatis Cocok)">
+                                {matching.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    ✨ {p.name} ({p.package_weight_grams} gram)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {others.length > 0 && (
+                              <optgroup label="Pilihan Kemasan Lainnya">
+                                {others.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} ({p.package_weight_grams} gram)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </>
+                        );
+                      })()}
                     </select>
                   </div>
 
