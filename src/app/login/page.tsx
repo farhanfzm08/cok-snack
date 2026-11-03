@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Eye, EyeOff, LogIn, Store } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [storeName, setStoreName] = useState("COK Snack");
+  const [tagline, setTagline] = useState("Cemilan Orang Kaya");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("cok_snack_settings");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.storeName) setStoreName(parsed.storeName);
+        if (parsed.tagline) setTagline(parsed.tagline);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,16 +53,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#E8E0F8] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <span className="text-3xl">🍿</span>
+          <div className="w-16 h-16 bg-[#E8E0F8] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#C4B0F0]/40">
+            <Store className="w-8 h-8 text-[#7C5CBF]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">COK Snack</h1>
-          <p className="text-sm text-gray-500 mt-1">Cemilan Orang Kaya</p>
-          <p className="text-xs text-gray-400 mt-2">Sistem Manajemen Bisnis Snack</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{storeName}</h1>
+          <p className="text-sm font-medium text-gray-500 mt-1">{tagline}</p>
+          <p className="text-xs text-gray-400 mt-1">Sistem Manajemen Bisnis Snack</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-xs">
           <h2 className="text-lg font-bold text-gray-900 mb-1">Selamat Datang!</h2>
           <p className="text-sm text-gray-500 mb-6">Masuk ke akun Anda untuk melanjutkan</p>
 
@@ -102,7 +117,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#7C5CBF] hover:bg-[#6B4DAF] text-white font-semibold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full bg-[#7C5CBF] hover:bg-[#6B4DAF] text-white font-semibold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -134,7 +149,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          © 2025 COK Snack (Cemilan Orang Kaya)
+          © {new Date().getFullYear()} {storeName} ({tagline})
         </p>
       </div>
     </div>
