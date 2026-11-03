@@ -1,19 +1,18 @@
 -- =========================================================================
--- PATCH: Tambah kolom customer_name pada tabel public.sales
---        dan update fungsi execute_sale untuk menyimpannya langsung
+-- PATCH: Perbaikan Eksekusi Penjualan Kasir (execute_sale) & customer_name
 -- 
 -- CARA MENJALANKAN:
 -- 1. Buka Supabase Dashboard -> SQL Editor
--- 2. Paste seluruh isi file ini, lalu klik Run
+-- 2. Paste seluruh kode di bawah ini, lalu klik Run
 -- =========================================================================
 
--- Step 1: Tambah kolom customer_name (skip jika sudah ada)
+-- Step 1: Tambah kolom customer_name ke tabel sales jika belum ada
 ALTER TABLE public.sales 
 ADD COLUMN IF NOT EXISTS customer_name TEXT DEFAULT 'Umum';
 
 COMMENT ON COLUMN public.sales.customer_name IS 'Nama pembeli / pelanggan transaksi kasir (hanya nama)';
 
--- Step 2: Migrate data lama dari kolom notes ke customer_name
+-- Step 2: Sinkronisasi data lama dari notes ke customer_name
 UPDATE public.sales
 SET customer_name = TRIM(notes)
 WHERE (customer_name IS NULL OR customer_name = 'Umum')
@@ -21,7 +20,7 @@ WHERE (customer_name IS NULL OR customer_name = 'Umum')
   AND notes != ''
   AND notes != 'Penjualan Kasir POS';
 
--- Step 3: Update fungsi execute_sale agar langsung simpan customer_name
+-- Step 3: Pasang kembali fungsi execute_sale yang sesuai dengan struktur tabel stock_movements
 CREATE OR REPLACE FUNCTION public.execute_sale(
     p_invoice_number TEXT,
     p_items JSONB,
@@ -52,10 +51,10 @@ BEGIN
         RAISE EXCEPTION 'Keranjang belanja tidak boleh kosong!';
     END IF;
 
-    -- Tentukan customer_name: gunakan p_notes, default 'Umum' jika kosong
+    -- Tentukan nama pembeli: bersihkan input atau fallback ke 'Umum'
     v_customer_name := COALESCE(NULLIF(TRIM(p_notes), ''), 'Umum');
 
-    -- Validasi: Cek stok setiap produk di keranjang
+    -- Validasi 1: Kunci dan periksa stok setiap produk terlebih dahulu
     FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
         product_id UUID,
         quantity INT,
@@ -64,24 +63,24 @@ BEGIN
         subtotal NUMERIC
     )
     LOOP
-        SELECT current_stock, name
-        INTO v_current_stock, v_product_name
+        SELECT current_stock, name INTO v_current_stock, v_product_name
         FROM public.products
-        WHERE id = v_item.product_id;
+        WHERE id = v_item.product_id
+        FOR UPDATE;
 
-        IF NOT FOUND THEN
+        IF v_current_stock IS NULL THEN
             RAISE EXCEPTION 'Produk dengan ID % tidak ditemukan!', v_item.product_id;
         END IF;
 
         IF v_current_stock < v_item.quantity THEN
-            RAISE EXCEPTION 'Stok % tidak mencukupi! Stok saat ini: %, dibutuhkan: %',
+            RAISE EXCEPTION 'Stok untuk produk "%" tidak mencukupi! Tersedia: %, Dibutuhkan: %',
                 v_product_name, v_current_stock, v_item.quantity;
         END IF;
 
-        v_total_cogs := v_total_cogs + (v_item.cogs_per_unit * v_item.quantity);
+        v_total_cogs := v_total_cogs + (COALESCE(v_item.cogs_per_unit, 0) * v_item.quantity);
     END LOOP;
 
-    -- Simpan Header Transaksi Penjualan (dengan customer_name)
+    -- Simpan Header Transaksi Penjualan (termasuk kolom customer_name)
     INSERT INTO public.sales (
         invoice_number,
         sale_date,
@@ -109,7 +108,7 @@ BEGIN
     )
     RETURNING id INTO v_sale_id;
 
-    -- Simpan Detail Barang, Potong Stok & Catat Mutasi
+    -- Simpan Detail Barang, Potong Stok & Catat Riwayat Mutasi
     FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
         product_id UUID,
         quantity INT,
@@ -118,7 +117,7 @@ BEGIN
         subtotal NUMERIC
     )
     LOOP
-        -- Simpan detail item
+        -- 1. Insert detail item penjualan
         INSERT INTO public.sale_items (
             sale_id,
             product_id,
@@ -131,37 +130,55 @@ BEGIN
             v_item.product_id,
             v_item.quantity,
             v_item.unit_price,
-            v_item.cogs_per_unit,
+            COALESCE(v_item.cogs_per_unit, 0),
             v_item.subtotal
         );
 
-        -- Potong stok produk
+        -- 2. Kurangi stok produk
         UPDATE public.products
-        SET current_stock = current_stock - v_item.quantity
+        SET current_stock = current_stock - v_item.quantity,
+            updated_at = timezone('utc'::text, now())
         WHERE id = v_item.product_id
         RETURNING current_stock INTO v_stock_after;
 
-        -- Catat mutasi stok
+        -- 3. Catat riwayat pergerakan stok (sesuai kolom tabel stock_movements)
         INSERT INTO public.stock_movements (
             product_id,
             movement_type,
             quantity_change,
-            stock_before,
             stock_after,
-            reference_type,
+            cost_per_unit,
             reference_id,
-            notes
+            reason
         ) VALUES (
             v_item.product_id,
-            'out',
-            -v_item.quantity,
-            v_stock_after + v_item.quantity,
-            v_stock_after,
             'sale',
-            v_sale_id,
-            'Terjual ke: ' || v_customer_name
+            -v_item.quantity,
+            v_stock_after,
+            COALESCE(v_item.cogs_per_unit, 0),
+            v_sale_id::text,
+            'Penjualan kasir #' || p_invoice_number || ' (' || v_customer_name || ')'
         );
     END LOOP;
+
+    -- Catat Arus Kas Masuk
+    INSERT INTO public.cash_movements (
+        movement_date,
+        type,
+        category,
+        amount,
+        payment_method,
+        reference_id,
+        notes
+    ) VALUES (
+        CURRENT_DATE,
+        'income',
+        'Penjualan Kasir',
+        p_total_amount,
+        p_payment_method,
+        v_sale_id::text,
+        'Transaksi Kasir #' || p_invoice_number || ' (' || v_customer_name || ')'
+    );
 
     RETURN v_sale_id;
 END;
