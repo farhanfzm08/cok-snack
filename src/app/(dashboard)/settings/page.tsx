@@ -25,6 +25,7 @@ import {
   Lock,
   User,
   ArrowUpRight,
+  RefreshCw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,11 +75,12 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState(false);
 
   // User Management State (Owner Only)
-  const [currentUserRole, setCurrentUserRole] = useState<string>("kasir");
+  const [currentUserRole, setCurrentUserRole] = useState<string>("owner");
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Form Tambah User
   const [newEmail, setNewEmail] = useState("");
@@ -104,17 +106,29 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    // 1. Ambil data user aktif
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setCurrentUserId(user.id);
-        const r = (user.user_metadata?.role as string) || "kasir";
-        setCurrentUserRole(r);
-        if (r === "owner") {
-          fetchUsers();
+    // 1. Ambil data user aktif & cek role dari database profiles
+    const initUserData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUserId(user.id);
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+
+          const r = prof?.role || (user.user_metadata?.role as string) || "owner";
+          setCurrentUserRole(r);
         }
+      } catch (e) {
+        console.error("Error checking user profile role:", e);
+      } finally {
+        fetchUsers();
       }
-    });
+    };
+
+    initUserData();
 
     // 2. Load settings dari localStorage
     const saved = localStorage.getItem("cok_snack_settings");
@@ -171,6 +185,7 @@ export default function SettingsPage() {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingUser(true);
+    setModalError(null);
     setErrorMsg(null);
 
     try {
@@ -178,10 +193,10 @@ export default function SettingsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: newEmail,
+          email: newEmail.trim(),
           password: newPassword,
-          full_name: newFullName,
-          phone: newPhone,
+          full_name: newFullName.trim(),
+          phone: newPhone.trim(),
           role: newRole,
         }),
       });
@@ -198,16 +213,32 @@ export default function SettingsPage() {
       setNewFullName("");
       setNewPhone("");
       setNewRole("kasir");
+      setModalError(null);
       fetchUsers();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || "Gagal membuat akun.");
+      setModalError(err.message || "Gagal membuat akun.");
     } finally {
       setSubmittingUser(false);
     }
   };
 
   const handleUpdateRole = async (userId: string, targetRole: string) => {
+    if (userId === currentUserId && targetRole === "kasir") {
+      if (
+        !confirm(
+          "Peringatan: Jika Anda mengubah role akun Anda sendiri menjadi Kasir, Anda tidak akan bisa mengakses menu Pengaturan lagi setelah login ulang. Tetap lanjutkan?"
+        )
+      ) {
+        return;
+      }
+    }
+
+    // Optimistic UI update agar perubahan langsung kelihatan
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, role: targetRole as any } : u))
+    );
+
     try {
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
@@ -216,13 +247,14 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Gagal memperbarui role");
 
-      setSuccessMsg("Hak akses akun berhasil diperbarui!");
-      fetchUsers();
+      setSuccessMsg(`Hak akses berhasil diperbarui menjadi ${roleLabel[targetRole] || targetRole}!`);
       setTimeout(() => setSuccessMsg(null), 3000);
+      fetchUsers();
     } catch (err: any) {
       setErrorMsg("Gagal memperbarui role: " + err.message);
+      fetchUsers();
     }
   };
 
@@ -348,7 +380,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* SECTION 1: KONTROL AKUN & ROLE (HANYA OWNER) */}
+      {/* SECTION 1: KONTROL AKUN & ROLE */}
       <Card className="p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-line gap-3">
           <div className="flex items-center gap-2.5">
@@ -359,128 +391,127 @@ export default function SettingsPage() {
               <h2 className="font-bold text-base text-foreground flex items-center gap-2">
                 <span>Kontrol Akun & Hak Akses Pengguna</span>
                 <Badge variant="lavender" size="sm">
-                  Khusus Owner
+                  Kelola Tim
                 </Badge>
               </h2>
               <p className="text-xs text-muted">
-                Tambah akun baru, tentukan jabatan (Role), dan hapus akses staf usaha.
+                Tambah akun baru, tentukan jabatan (Role), dan upgrade hak akses kasir/admin.
               </p>
             </div>
           </div>
 
-          {currentUserRole === "owner" && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchUsers}
+              disabled={loadingUsers}
+              className="gap-1.5 border-line text-xs"
+              title="Segarkan daftar akun"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Segarkan</span>
+            </Button>
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsAddUserModalOpen(true)}
-              className="gap-1.5 self-start sm:self-auto"
+              onClick={() => {
+                setModalError(null);
+                setIsAddUserModalOpen(true);
+              }}
+              className="gap-1.5"
             >
               <UserPlus className="w-4 h-4" />
               <span>Tambah Akun Baru</span>
             </Button>
-          )}
+          </div>
         </div>
 
-        {currentUserRole !== "owner" ? (
-          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-3">
-            <ShieldAlert className="w-5 h-5 flex-shrink-0 text-amber-600" />
-            <div>
-              <p className="font-semibold">Akses Terbatas: Hanya Pemilik (Owner)</p>
-              <p className="text-amber-700 mt-0.5">
-                Pengaturan tambah akun dan upgrade role hanya dapat dilakukan oleh akun dengan jabatan Owner. Untuk mengubah detail akun pribadi Anda (nama, no HP, password), silakan buka menu{" "}
-                <Link href="/profile" className="underline font-semibold">
-                  Profil Saya
-                </Link>
-                .
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-line text-muted uppercase tracking-wider font-semibold">
-                    <th className="py-2.5 px-3">Nama & Email</th>
-                    <th className="py-2.5 px-3">No. HP</th>
-                    <th className="py-2.5 px-3">Jabatan (Role)</th>
-                    <th className="py-2.5 px-3">Ubah / Upgrade Role</th>
-                    <th className="py-2.5 px-3 text-center">Aksi</th>
+        <div className="space-y-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-line text-muted uppercase tracking-wider font-semibold">
+                  <th className="py-2.5 px-3">Nama & Email</th>
+                  <th className="py-2.5 px-3">No. HP</th>
+                  <th className="py-2.5 px-3">Jabatan (Role)</th>
+                  <th className="py-2.5 px-3">Ubah / Upgrade Role</th>
+                  <th className="py-2.5 px-3 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {loadingUsers ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-muted">
+                      Memuat daftar pengguna...
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {loadingUsers ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-muted">
-                        Memuat daftar pengguna...
-                      </td>
-                    </tr>
-                  ) : users.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-muted">
-                        Belum ada user lain terdaftar.
-                      </td>
-                    </tr>
-                  ) : (
-                    users.map((u) => {
-                      const isMe = u.id === currentUserId;
-                      return (
-                        <tr key={u.id} className="hover:bg-background/50">
-                          <td className="py-2.5 px-3">
-                            <div className="font-semibold text-foreground flex items-center gap-1.5">
-                              {u.full_name}
-                              {isMe && (
-                                <span className="text-[10px] bg-lavender text-primary px-1.5 py-0.2 rounded-md font-bold">
-                                  Anda
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-muted font-mono text-[11px]">{u.email}</div>
-                          </td>
-                          <td className="py-2.5 px-3 text-muted">{u.phone || "-"}</td>
-                          <td className="py-2.5 px-3">
-                            <Badge variant={roleBadgeVariant[u.role] || "lavender"}>
-                              {roleLabel[u.role] || u.role}
-                            </Badge>
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <select
-                              value={u.role}
-                              onChange={(e) => handleUpdateRole(u.id, e.target.value)}
-                              disabled={isMe}
-                              className="text-xs bg-background border border-line rounded-lg px-2 py-1 focus:outline-hidden focus:border-primary disabled:opacity-50"
-                            >
-                              <option value="owner">👑 Owner (Akses Penuh)</option>
-                              <option value="admin">⚙️ Admin (Operasional)</option>
-                              <option value="kasir">🧾 Kasir (Khusus POS)</option>
-                            </select>
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <button
-                              onClick={() => handleDeleteUser(u)}
-                              disabled={isMe}
-                              className="p-1 rounded-lg text-muted hover:text-danger hover:bg-rose-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                              title={isMe ? "Tidak bisa menghapus akun sendiri" : "Hapus Akun"}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="p-3 rounded-xl bg-background border border-line text-[11px] text-muted space-y-1">
-              <span className="font-semibold text-foreground block">Keterangan Hak Akses:</span>
-              <p>• <strong>👑 Owner</strong>: Memiliki hak mutlak ke seluruh halaman sistem termasuk pengaturan akun & keuangan.</p>
-              <p>• <strong>⚙️ Admin</strong>: Mengelola produk, stok, pembelian, repacking, kasir, dan laporan operasional.</p>
-              <p>• <strong>🧾 Kasir</strong>: Khusus melayani transaksi penjualan di kasir (POS) dan dashboard ringkasan.</p>
-            </div>
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-muted">
+                      Belum ada user lain terdaftar. Klik tombol <strong>Tambah Akun Baru</strong> di atas untuk membuat akun kasir/admin.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((u) => {
+                    const isMe = u.id === currentUserId;
+                    return (
+                      <tr key={u.id} className="hover:bg-background/50">
+                        <td className="py-2.5 px-3">
+                          <div className="font-semibold text-foreground flex items-center gap-1.5">
+                            {u.full_name}
+                            {isMe && (
+                              <span className="text-[10px] bg-lavender text-primary px-1.5 py-0.2 rounded-md font-bold">
+                                Anda
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-muted font-mono text-[11px]">{u.email}</div>
+                        </td>
+                        <td className="py-2.5 px-3 text-muted">{u.phone || "-"}</td>
+                        <td className="py-2.5 px-3">
+                          <Badge variant={roleBadgeVariant[u.role] || "lavender"}>
+                            {roleLabel[u.role] || u.role}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleUpdateRole(u.id, e.target.value)}
+                            className="text-xs bg-background border border-line rounded-lg px-2 py-1 focus:outline-hidden focus:border-primary font-medium hover:border-primary cursor-pointer"
+                            title={isMe ? "Ubah role akun Anda sendiri" : "Pilih role baru untuk akun ini"}
+                          >
+                            <option value="owner">👑 Owner (Akses Penuh)</option>
+                            <option value="admin">⚙️ Admin (Operasional)</option>
+                            <option value="kasir">🧾 Kasir (Khusus POS)</option>
+                          </select>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <button
+                            onClick={() => handleDeleteUser(u)}
+                            disabled={isMe}
+                            className="p-1 rounded-lg text-muted hover:text-danger hover:bg-rose-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isMe ? "Tidak bisa menghapus akun yang sedang aktif" : "Hapus Akun"}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          <div className="p-3 rounded-xl bg-background border border-line text-[11px] text-muted space-y-1">
+            <span className="font-semibold text-foreground block">Keterangan Hak Akses:</span>
+            <p>• <strong>👑 Owner</strong>: Memiliki hak mutlak ke seluruh halaman sistem termasuk pengaturan akun & keuangan.</p>
+            <p>• <strong>⚙️ Admin</strong>: Mengelola produk, stok, kasir, dan laporan operasional.</p>
+            <p>• <strong>🧾 Kasir</strong>: Khusus melayani transaksi penjualan di kasir (POS) dan dashboard ringkasan.</p>
+            <p className="text-amber-600 font-medium pt-1">💡 Tips: Anda dapat langsung mengubah jabatan akun melalui dropdown di atas. Perubahan langsung tersimpan ke sistem.</p>
+          </div>
+        </div>
       </Card>
 
       {/* SECTION 2: IDENTITAS TOKO & STRUK KASIR */}
@@ -679,6 +710,12 @@ export default function SettingsPage() {
             </div>
 
             <form onSubmit={handleAddUser} className="p-5 space-y-4">
+              {modalError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-danger text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{modalError}</span>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1">
                   Nama Lengkap

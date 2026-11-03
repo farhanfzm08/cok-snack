@@ -62,7 +62,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (createErr) throw createErr;
+    if (createErr) {
+      if (
+        createErr.message.includes("already registered") ||
+        createErr.message.includes("already exists") ||
+        createErr.message.includes("User already registered")
+      ) {
+        return NextResponse.json(
+          { error: "Email sudah terdaftar. Silakan gunakan email lain." },
+          { status: 400 }
+        );
+      }
+      throw createErr;
+    }
     if (!newUser.user) throw new Error("Gagal membuat user");
 
     // 2. Simpan/Upsert ke tabel public.profiles
@@ -99,26 +111,40 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "User ID diperlukan" }, { status: 400 });
     }
 
+    // 1. Ambil metadata user saat ini agar tidak overwrite field lain
+    const { data: existingUser, error: fetchErr } = await admin.auth.admin.getUserById(id);
+    if (fetchErr) throw fetchErr;
+
+    const existingMeta = existingUser?.user?.user_metadata || {};
+    const mergedMeta: Record<string, any> = { ...existingMeta };
+    if (role && ["owner", "admin", "kasir"].includes(role)) mergedMeta.role = role;
+    if (full_name !== undefined) mergedMeta.full_name = full_name;
+    if (phone !== undefined) mergedMeta.phone = phone;
+
     const updates: Record<string, any> = {};
     if (role && ["owner", "admin", "kasir"].includes(role)) updates.role = role;
     if (full_name !== undefined) updates.full_name = full_name;
     if (phone !== undefined) updates.phone = phone;
 
-    // 1. Update Auth user metadata
+    // Update Auth user metadata (merge, bukan replace)
     const { error: authErr } = await admin.auth.admin.updateUserById(id, {
-      user_metadata: updates,
+      user_metadata: mergedMeta,
     });
     if (authErr) throw authErr;
 
-    // 2. Update public.profiles
-    const { error: profErr } = await admin
-      .from("profiles")
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-    if (profErr) throw profErr;
+    // 2. Update/upsert public.profiles (hanya field yang diubah)
+    if (Object.keys(updates).length > 0) {
+      const { error: profErr } = await admin
+        .from("profiles")
+        .upsert({
+          id: id,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        });
+      if (profErr) {
+        console.warn("profiles upsert warning:", profErr);
+      }
+    }
 
     return NextResponse.json({ success: true, message: "User berhasil diperbarui" });
   } catch (err: any) {
