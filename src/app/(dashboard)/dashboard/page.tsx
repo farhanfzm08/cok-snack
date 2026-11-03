@@ -181,9 +181,14 @@ export default function DashboardPage() {
         // Hitung Top 3 Buyer
         const buyerMap: Record<string, TopBuyer> = {};
         salesData.forEach((s: any) => {
+          // Prioritas: customer_name > notes (strip prefix) > "Umum"
           let bName = (s.customer_name || "").trim();
-          if (!bName && s.notes) {
-            bName = s.notes.replace(/^Pembeli:\s*/i, "").trim();
+          if (!bName || bName === "Umum") {
+            // Fallback ke notes jika customer_name kosong/default
+            const notesVal = (s.notes || "").trim();
+            if (notesVal && notesVal !== "Penjualan Kasir POS" && notesVal !== "Umum") {
+              bName = notesVal.replace(/^Pembeli:\s*/i, "").trim();
+            }
           }
           if (!bName || bName === "Penjualan Kasir POS") {
             bName = "Umum";
@@ -200,10 +205,20 @@ export default function DashboardPage() {
           buyerMap[bName].txCount += 1;
         });
 
-        // Urutkan buyer, prioritaskan yang bernama jika ada nilai sama
-        const sortedBuyers = Object.values(buyerMap)
-          .sort((a, b) => b.totalSpent - a.totalSpent)
-          .slice(0, 3);
+        // Urutkan buyer: yang punya nama (bukan "Umum") diprioritaskan,
+        // lalu sort berdasarkan total belanja tertinggi
+        const allBuyers = Object.values(buyerMap)
+          .sort((a, b) => {
+            // Named buyers come first when spending is equal
+            if (a.name === "Umum" && b.name !== "Umum") return 1;
+            if (a.name !== "Umum" && b.name === "Umum") return -1;
+            return b.totalSpent - a.totalSpent;
+          });
+        // Top 3 excluding "Umum", fallback to include "Umum" if not enough
+        const namedBuyers = allBuyers.filter(b => b.name !== "Umum").slice(0, 3);
+        const sortedBuyers = namedBuyers.length >= 3
+          ? namedBuyers
+          : [...namedBuyers, ...allBuyers.filter(b => b.name === "Umum")].slice(0, 3);
         setTopBuyers(sortedBuyers);
 
         // Hitung Metode Pembayaran

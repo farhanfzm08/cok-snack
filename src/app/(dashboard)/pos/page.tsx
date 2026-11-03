@@ -113,6 +113,7 @@ export default function PosPage() {
         setStoreSettings((prev) => ({
           ...prev,
           storeName: parsed.storeName || "COK SNACK",
+          tagline: parsed.tagline || "Cemilan Orang Kaya",
           phone: parsed.phone || "0812-3456-7890",
           address: parsed.address || "Jl. Industri Keripik No. 8, Indonesia",
           receiptFooter: parsed.receiptFooter || prev.receiptFooter,
@@ -288,14 +289,6 @@ export default function PosPage() {
     if (error) {
       showToast("error", "Transaksi gagal: " + error.message);
     } else {
-      // If sale created successfully, also sync customer_name column on the record
-      if (data) {
-        try {
-          await supabase.from("sales").update({ customer_name: buyerClean }).eq("id", data);
-        } catch {
-          // ignore if column not present yet
-        }
-      }
 
       // Set completed sale for receipt
       setCompletedSale({
@@ -741,10 +734,10 @@ export default function PosPage() {
               {/* Paper Jagged Top Tear Simulation */}
               <div className="text-center border-b-2 border-black border-dashed pb-3">
                 <h2 className="font-black text-base tracking-wider uppercase text-black">
-                  COK SNACK
+                  {storeSettings.storeName}
                 </h2>
                 <p className="text-[10px] font-bold tracking-tight text-gray-800">
-                  (Cemilan Orang Kaya)
+                  ({storeSettings.tagline})
                 </p>
                 <p className="text-[9px] text-gray-600 mt-1 leading-snug">
                   {storeSettings.address}
@@ -850,7 +843,7 @@ export default function PosPage() {
                     TERIMA KASIH ATAS KUNJUNGAN ANDA!
                   </p>
                   <p className="text-[8px] text-gray-500 italic mt-0.5">
-                    COK Snack - Bikin Nagih, Rasa Juara!
+                    {storeSettings.storeName} - {storeSettings.tagline}
                   </p>
                 </div>
               </div>
