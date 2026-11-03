@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -8,30 +8,27 @@ import {
   BookOpen,
   ArrowRight,
   Package,
-  Boxes,
-  ShoppingBasket,
-  Truck,
-  PackageCheck,
+  PlusCircle,
   ShoppingCart,
-  Wallet,
   BarChart3,
   CheckCircle2,
-  AlertTriangle,
   HelpCircle,
   Calculator,
   Printer,
   Sparkles,
   Layers,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Edit,
+  TrendingUp,
+  Receipt
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function TutorialPage() {
   const [activeTab, setActiveTab] = useState<
-    "flow" | "products" | "purchases" | "repacking" | "pos" | "reports" | "faq"
+    "flow" | "products" | "stock" | "pos" | "reports" | "faq"
   >("flow");
 
   return (
@@ -44,24 +41,23 @@ export default function TutorialPage() {
             <span>Pusat Panduan & SOP COK Snack (Cemilan Orang Kaya)</span>
           </h1>
           <p className="text-sm text-muted">
-            Panduan lengkap memahami alur kerja sistem, rumus konversi repacking, kalkulasi HPP, dan operasional kasir.
+            Panduan lengkap alur kerja sistem terpadu: Tambah Produk Jadi, Kelola Stok Masuk, Transaksi Kasir POS, dan Laporan Keuntungan.
           </p>
         </div>
         <Badge variant="mint" className="gap-1.5 py-1 px-3 self-start sm:self-auto">
           <Sparkles className="w-3.5 h-3.5" />
-          SOP Terstandarisasi
+          SOP Praktis & Cepat
         </Badge>
       </div>
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
         {[
-          { id: "flow", label: "1. Alur Bisnis Penuh", icon: Layers },
-          { id: "products", label: "2. Master Data Produk", icon: Package },
-          { id: "purchases", label: "3. Supplier & Pembelian", icon: Truck },
-          { id: "repacking", label: "4. SOP Repacking & HPP", icon: PackageCheck },
-          { id: "pos", label: "5. Kasir (POS)", icon: ShoppingCart },
-          { id: "reports", label: "6. Keuangan & Laporan", icon: BarChart3 },
+          { id: "flow", label: "1. Alur Bisnis Praktis", icon: Layers },
+          { id: "products", label: "2. Produk & Atur HPP", icon: Package },
+          { id: "stock", label: "3. Tambah & Edit Stok", icon: PlusCircle },
+          { id: "pos", label: "4. Kasir Penjualan (POS)", icon: ShoppingCart },
+          { id: "reports", label: "5. Laporan & Keuntungan", icon: BarChart3 },
           { id: "faq", label: "FAQ / Tanya Jawab", icon: HelpCircle },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -83,16 +79,16 @@ export default function TutorialPage() {
         })}
       </div>
 
-      {/* Tab 1: Alur Bisnis Penuh */}
+      {/* Tab 1: Alur Bisnis Praktis */}
       {activeTab === "flow" && (
         <div className="space-y-6 animate-in fade-in">
           <Card className="p-6">
             <h2 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
               <Layers className="w-5 h-5 text-primary" />
-              Peta Alur Kerja (End-to-End Business Flow)
+              Peta Alur Kerja Sederhana (4 Langkah Cepat)
             </h2>
             <p className="text-xs text-muted mb-6">
-              Sistem COK Snack dirancang khusus untuk menjembatani pembelian bahan mentah curah (kg) hingga menjadi produk kemasan siap jual (gram/pack) di kasir toko:
+              Sistem COK Snack telah disederhanakan tanpa kerumitan pencatatan bahan baku atau supplier. Fokus langsung pada produk kemasan siap jual:
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
@@ -102,13 +98,13 @@ export default function TutorialPage() {
                   <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-xs mb-3">
                     1
                   </div>
-                  <h3 className="font-bold text-sm text-foreground mb-1">Beli Bahan Mentah</h3>
+                  <h3 className="font-bold text-sm text-foreground mb-1">Daftarkan Produk</h3>
                   <p className="text-[11px] text-muted">
-                    Beli snack curah dari supplier dalam satuan <strong>Kilogram (Kg)</strong>. Catat faktur di menu <em>Pembelian</em>. Stok bahan bertambah otomatis.
+                    Buat produk kemasan siap jual di menu <em>Produk & Stok</em>. Tentukan nama snack, gramasi (contoh: 100g), Modal HPP per bungkus, dan harga jual kasir.
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-line/60">
-                  <Badge variant="lavender" className="text-[10px]">Stok Bahan +Kg</Badge>
+                  <Badge variant="lavender" className="text-[10px]">HPP Ditentukan di Awal</Badge>
                 </div>
               </div>
 
@@ -118,13 +114,13 @@ export default function TutorialPage() {
                   <div className="w-8 h-8 rounded-xl bg-success text-white flex items-center justify-center font-bold text-xs mb-3">
                     2
                   </div>
-                  <h3 className="font-bold text-sm text-foreground mb-1">Repacking & HPP</h3>
+                  <h3 className="font-bold text-sm text-foreground mb-1">Tambah Stok Masuk</h3>
                   <p className="text-[11px] text-muted">
-                    Ambil beberapa kg bahan mentah, kemas ke gram (100g, 250g, dll). Masukkan biaya plastik. Sistem menghitung <strong>HPP per bungkus</strong> secara otomatis.
+                    Saat barang baru siap (hasil packing), cukup klik tombol <strong>+ Stok</strong> di tabel produk atau dashboard. Stok bungkus bertambah seketika.
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-line/60">
-                  <Badge variant="mint" className="text-[10px]">Bahan -Kg & Jadi +Pack</Badge>
+                  <Badge variant="mint" className="text-[10px]">Cepat Sekali Klik</Badge>
                 </div>
               </div>
 
@@ -134,13 +130,13 @@ export default function TutorialPage() {
                   <div className="w-8 h-8 rounded-xl bg-accent-dark text-white flex items-center justify-center font-bold text-xs mb-3">
                     3
                   </div>
-                  <h3 className="font-bold text-sm text-foreground mb-1">Kasir (POS)</h3>
+                  <h3 className="font-bold text-sm text-foreground mb-1">Kasir Toko (POS)</h3>
                   <p className="text-[11px] text-muted">
-                    Jual snack kemasan ke pelanggan. Terima bayar Tunai, QRIS, atau Transfer. Cetak struk belanja. Stok kemasan terpotong otomatis saat transaksi sukses.
+                    Layani pembeli di kasir dengan mudah. Bayar Tunai, QRIS, atau Transfer, lalu cetak struk belanja. Stok produk terpotong otomatis di database.
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-line/60">
-                  <Badge variant="peach" className="text-[10px]">Stok Jadi -Pack</Badge>
+                  <Badge variant="peach" className="text-[10px]">Stok Terpotong Otomatis</Badge>
                 </div>
               </div>
 
@@ -150,13 +146,13 @@ export default function TutorialPage() {
                   <div className="w-8 h-8 rounded-xl bg-[#1D5B99] text-white flex items-center justify-center font-bold text-xs mb-3">
                     4
                   </div>
-                  <h3 className="font-bold text-sm text-foreground mb-1">Laba & Laporan</h3>
+                  <h3 className="font-bold text-sm text-foreground mb-1">Laporan Laba Rugi</h3>
                   <p className="text-[11px] text-muted">
-                    Sistem otomatis menghitung omzet penjualan, total HPP, <strong>Laba Kotor (Gross Margin)</strong>, serta menyediakan cetak dokumen laporan resmi berformat PDF.
+                    Pantau omzet harian, beban modal HPP terjual, dan <strong>Laba Kotor Bersih</strong>. Cetak laporan formal berformat PDF atau unduh CSV.
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-line/60">
-                  <Badge variant="sky" className="text-[10px]">Laba Bersih & PDF</Badge>
+                  <Badge variant="sky" className="text-[10px]">Otomatis & Siap Cetak</Badge>
                 </div>
               </div>
             </div>
@@ -164,21 +160,11 @@ export default function TutorialPage() {
 
           {/* Quick Links */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Link href="/purchases" className="block">
+            <Link href="/products" className="block">
               <Card className="p-4 hover:border-primary/50 transition-colors flex items-center justify-between group">
                 <div>
-                  <h4 className="font-semibold text-sm text-foreground group-hover:text-primary">Mulai Beli Bahan</h4>
-                  <p className="text-xs text-muted">Catat nota belanja dari vendor</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-transform group-hover:translate-x-1" />
-              </Card>
-            </Link>
-
-            <Link href="/repacking" className="block">
-              <Card className="p-4 hover:border-primary/50 transition-colors flex items-center justify-between group">
-                <div>
-                  <h4 className="font-semibold text-sm text-foreground group-hover:text-primary">Mulai Repacking</h4>
-                  <p className="text-xs text-muted">Kemas curah kg ke bungkus</p>
+                  <h4 className="font-semibold text-sm text-foreground group-hover:text-primary">Kelola Produk & Stok</h4>
+                  <p className="text-xs text-muted">Tambah produk atau isi stok</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-transform group-hover:translate-x-1" />
               </Card>
@@ -187,8 +173,18 @@ export default function TutorialPage() {
             <Link href="/pos" className="block">
               <Card className="p-4 hover:border-primary/50 transition-colors flex items-center justify-between group">
                 <div>
-                  <h4 className="font-semibold text-sm text-foreground group-hover:text-primary">Buka Kasir Toko</h4>
-                  <p className="text-xs text-muted">Lakukan transaksi penjualan</p>
+                  <h4 className="font-semibold text-sm text-foreground group-hover:text-primary">Buka Kasir POS</h4>
+                  <p className="text-xs text-muted">Mulai transaksi kasir toko</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-transform group-hover:translate-x-1" />
+              </Card>
+            </Link>
+
+            <Link href="/reports" className="block">
+              <Card className="p-4 hover:border-primary/50 transition-colors flex items-center justify-between group">
+                <div>
+                  <h4 className="font-semibold text-sm text-foreground group-hover:text-primary">Lihat Laporan Penjualan</h4>
+                  <p className="text-xs text-muted">Rekap omzet & cetak PDF</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-transform group-hover:translate-x-1" />
               </Card>
@@ -203,34 +199,33 @@ export default function TutorialPage() {
           <Card className="p-6 space-y-4">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
-              Prinsip Pembedaan Bahan Baku vs Produk Jadi
+              Pembuatan Produk Kemasan & Pengaturan HPP
             </h2>
             <p className="text-xs text-muted">
-              Salah satu kunci akurasi inventaris adalah tidak mencampuradukkan barang mentah dengan barang kemasan. Di COK Snack, produk dibagi menjadi dua kategori sistem:
+              Tidak perlu lagi pusing membedakan bahan mentah curah vs produk repacking. Semua snack langsung didaftarkan sebagai produk kemasan siap jual:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="p-4 rounded-xl border border-line bg-lavender/30 space-y-2">
-                <Badge variant="lavender">Bahan Mentah (Curah)</Badge>
-                <h4 className="font-bold text-sm text-foreground">Karakteristik Bahan Curah:</h4>
-                <ul className="text-xs text-muted space-y-1 list-disc list-inside">
-                  <li>Satuan dasar selalu <strong>Kilogram (Kg)</strong>.</li>
-                  <li>Mendukung angka desimal (contoh: <code>0.5 kg</code> atau <code>12.75 kg</code>).</li>
-                  <li>Hanya memiliki <strong>Harga Beli (Cost Price) per kg</strong>.</li>
-                  <li>Tidak dijual langsung di kasir POS, melainkan bahan masukan untuk proses repacking.</li>
-                  <li>Contoh: <em>Makaroni Cikruh Pedas (Curah 10kg)</em>, <em>Keripik Kaca Curah</em>.</li>
+                <Badge variant="lavender">Formulir Tambah Produk Cepat</Badge>
+                <h4 className="font-bold text-sm text-foreground">Data yang Diisi Saat Buat Produk:</h4>
+                <ul className="text-xs text-muted space-y-1.5 list-disc list-inside">
+                  <li><strong>Nama Snack:</strong> Contoh: <em>Basreng Pedas Daun Jeruk 100g</em>.</li>
+                  <li><strong>Kategori:</strong> Basreng, Makaroni, Keripik Kaca, Usus Krispi, dll.</li>
+                  <li><strong>Berat Kemasan (Gram):</strong> Contoh: <code>100</code>, <code>250</code> gram.</li>
+                  <li><strong>Modal Pokok (HPP) / bungkus:</strong> Ditetapkan di awal (misal Rp 3.500/bungkus).</li>
+                  <li><strong>Harga Jual / bungkus:</strong> Harga yang tertera di kasir (misal Rp 6.000/bungkus).</li>
+                  <li><strong>Stok Awal:</strong> Jumlah bungkus yang siap dijual di etalase.</li>
                 </ul>
               </div>
 
               <div className="p-4 rounded-xl border border-line bg-mint/30 space-y-2">
-                <Badge variant="mint">Produk Jadi (Kemasan)</Badge>
-                <h4 className="font-bold text-sm text-foreground">Karakteristik Produk Kemasan:</h4>
-                <ul className="text-xs text-muted space-y-1 list-disc list-inside">
-                  <li>Satuan kemasan adalah <strong>Bungkus / Pack / Pcs</strong>.</li>
-                  <li>Memiliki berat isi kemasan dalam gram (contoh: <code>100 gram</code>, <code>250 gram</code>).</li>
-                  <li>Memiliki <strong>Harga Jual Kasir (Selling Price)</strong> dan HPP yang terbentuk dari repacking.</li>
-                  <li>Tampil aktif di layar kasir POS untuk dibeli pelanggan.</li>
-                  <li>Contoh: <em>Makaroni Cikruh COK 100g</em>, <em>Keripik Kaca Pedas 200g</em>.</li>
+                <Badge variant="mint">Mode Edit Produk Fleksibel</Badge>
+                <h4 className="font-bold text-sm text-foreground">Fitur Edit & Pembaruan Harga:</h4>
+                <ul className="text-xs text-muted space-y-1.5 list-disc list-inside">
+                  <li>Terdapat tombol <strong>Pensil (Edit)</strong> di samping setiap baris produk.</li>
+                  <li>Anda bebas mengubah nama, kategori, gramasi, harga jual, maupun nilai HPP kapan saja jika terjadi kenaikan harga pasar.</li>
+                  <li>Perubahan HPP akan langsung berlaku untuk transaksi kasir berikutnya, memastikan perhitungan laba selalu akurat.</li>
                 </ul>
               </div>
             </div>
@@ -238,61 +233,59 @@ export default function TutorialPage() {
             <div className="p-3.5 rounded-xl bg-background border border-line flex items-center gap-3 text-xs text-muted">
               <ShieldCheck className="w-5 h-5 text-success flex-shrink-0" />
               <span>
-                <strong>Fitur Perlindungan Hapus Bersih:</strong> Jika Anda menghapus produk uji coba di menu Produk, sistem secara aman akan menghapus riwayat pergerakan stok terkait (*CASCADE Delete*).
+                <strong>Tombol Hapus Produk Bersih:</strong> Jika ingin menghapus produk yang sudah tidak dijual, cukup klik ikon sampah merah di tabel produk. Data mutasi riwayat terkait akan terhapus dengan aman.
               </span>
             </div>
           </Card>
         </div>
       )}
 
-      {/* Tab 3: Supplier & Pembelian */}
-      {activeTab === "purchases" && (
+      {/* Tab 3: Tambah & Edit Stok */}
+      {activeTab === "stock" && (
         <div className="space-y-6 animate-in fade-in">
           <Card className="p-6 space-y-4">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Truck className="w-5 h-5 text-primary" />
-              SOP Pembelian Bahan Mentah Curah
+              <PlusCircle className="w-5 h-5 text-success" />
+              Penambahan Stok Masuk Cepat (+ Stok)
             </h2>
             <p className="text-xs text-muted">
-              Setiap kali Anda mendatangkan karung/bal snack curah dari supplier, lakukan pencatatan faktur di sistem agar stok dan nilai modal tercatat otomatis.
+              Saat Anda selesai mengemas snack baru, Anda tidak perlu mengisi formulir panjang atau alur yang rumit:
             </p>
 
             <div className="space-y-3 pt-2">
-              <div className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-lg bg-lavender text-primary font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="flex gap-3 items-start p-3 rounded-xl bg-surface border border-line">
+                <div className="w-7 h-7 rounded-lg bg-mint text-success font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                   1
                 </div>
                 <div>
-                  <h4 className="font-semibold text-xs text-foreground">Daftarkan Supplier di Menu Supplier</h4>
+                  <h4 className="font-semibold text-xs text-foreground">Buka Halaman Dashboard atau Produk</h4>
                   <p className="text-[11px] text-muted">
-                    Masukkan nama toko/vendor, nomor kontak (WhatsApp), dan alamat. Halaman supplier juga otomatis menghitung total akumulasi uang yang sudah Anda belanjakan ke vendor tersebut.
+                    Di tabel inventaris produk, temukan produk yang ingin ditambah stoknya.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-lg bg-lavender text-primary font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="flex gap-3 items-start p-3 rounded-xl bg-surface border border-line">
+                <div className="w-7 h-7 rounded-lg bg-mint text-success font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                   2
                 </div>
                 <div>
-                  <h4 className="font-semibold text-xs text-foreground">Catat Nota di Menu Pembelian</h4>
+                  <h4 className="font-semibold text-xs text-foreground">Klik Tombol "+ Stok"</h4>
                   <p className="text-[11px] text-muted">
-                    Pilih nama supplier, masukkan nomor faktur, dan pilih bahan mentah. Anda bisa memasukkan kuantiti desimal (misal <code>15.5 kg</code>) beserta harga beli per kg.
+                    Akan muncul jendela popup cepat. Masukkan jumlah bungkus yang masuk (misal: <code>50</code> bungkus) dan catatan (opsional, misal: <em>"Packing gelombang 2"</em>).
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-lg bg-lavender text-primary font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="flex gap-3 items-start p-3 rounded-xl bg-surface border border-line">
+                <div className="w-7 h-7 rounded-lg bg-mint text-success font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                   3
                 </div>
                 <div>
-                  <h4 className="font-semibold text-xs text-foreground">Otomatisasi Sistem Saat Pembelian Disimpan:</h4>
-                  <ul className="text-[11px] text-muted list-disc list-inside mt-1 space-y-0.5">
-                    <li>Stok bahan mentah (kg) langsung bertambah di menu Persediaan.</li>
-                    <li>Harga beli per kg bahan baku otomatis diperbarui ke harga terbaru (mempengaruhi HPP repacking selanjutnya).</li>
-                    <li>Jika Anda memilih status <strong>Lunas</strong>, pengeluaran uang langsung otomatis dicatat di Buku Kas Keuangan.</li>
-                  </ul>
+                  <h4 className="font-semibold text-xs text-foreground">Simpan Stok Masuk</h4>
+                  <p className="text-[11px] text-muted">
+                    Stok produk langsung bertambah seketika di kasir POS dan sistem mencatat audit trail mutasi stok secara otomatis.
+                  </p>
                 </div>
               </div>
             </div>
@@ -300,73 +293,7 @@ export default function TutorialPage() {
         </div>
       )}
 
-      {/* Tab 4: SOP Repacking & HPP */}
-      {activeTab === "repacking" && (
-        <div className="space-y-6 animate-in fade-in">
-          <Card className="p-6 space-y-4">
-            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <PackageCheck className="w-5 h-5 text-success" />
-              SOP Repacking, Konversi Gramasi, & Rumus HPP (Kritis!)
-            </h2>
-            <p className="text-xs text-muted">
-              Repacking adalah inti bisnis UMKM Snack. Fitur ini mengkonversi bahan curah (kg) menjadi kemasan (gram) dengan rumus matematika presisi.
-            </p>
-
-            {/* Formula Card */}
-            <div className="p-4 rounded-xl bg-background border border-line space-y-3">
-              <h3 className="font-bold text-xs text-primary uppercase tracking-wider flex items-center gap-1.5">
-                <Calculator className="w-4 h-4" />
-                Rumus Dasar Konversi & Susut Produksi
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="p-3 rounded-lg bg-surface border border-line">
-                  <span className="text-muted block text-[11px]">1. Konversi Berat:</span>
-                  <span className="font-mono font-bold text-foreground block mt-1">1 Kg = 1.000 Gram</span>
-                  <span className="text-[11px] text-muted block mt-0.5">Contoh: 5 kg = 5.000 gram</span>
-                </div>
-                <div className="p-3 rounded-lg bg-surface border border-line">
-                  <span className="text-muted block text-[11px]">2. Target Teoritis:</span>
-                  <span className="font-mono font-bold text-foreground block mt-1">(Kg Ã— 1000) Ã· Gram Kemasan</span>
-                  <span className="text-[11px] text-muted block mt-0.5">5.000g Ã· 100g = 50 bungkus</span>
-                </div>
-                <div className="p-3 rounded-lg bg-surface border border-line">
-                  <span className="text-muted block text-[11px]">3. Susut Produksi (Shrinkage):</span>
-                  <span className="font-mono font-bold text-danger block mt-1">Total Gram - Gram Terkemas</span>
-                  <span className="text-[11px] text-muted block mt-0.5">Remahan hancur atau debu bumbu</span>
-                </div>
-              </div>
-            </div>
-
-            {/* HPP Calculation Example */}
-            <div className="p-4 rounded-xl bg-mint/20 border border-success/30 space-y-2">
-              <h4 className="font-bold text-xs text-success uppercase tracking-wider">
-                Contoh Nyata Perhitungan HPP per Bungkus:
-              </h4>
-              <p className="text-xs text-foreground leading-relaxed">
-                Anda mengambil <strong>5 kg Makaroni Curah</strong> seharga <strong>Rp 30.000/kg</strong> (Total bahan: Rp 150.000).<br />
-                Target produksi kemasan 100 gram adalah 50 bungkus, namun hasil aktual yang layak jual adalah <strong>48 bungkus</strong> (ada remukan bumbu 200 gram).<br />
-                Biaya plastik kemasan & stiker adalah <strong>Rp 200/bungkus</strong> (Total kemasan: Rp 9.600).
-              </p>
-              <div className="p-3 rounded-lg bg-surface border border-line text-xs font-mono">
-                Total Biaya = Rp 150.000 (bahan) + Rp 9.600 (kemasan) = Rp 159.600<br />
-                <strong>HPP per Bungkus = Rp 159.600 Ã· 48 bungkus = Rp 3.325 / bungkus</strong>
-              </div>
-              <p className="text-[11px] text-muted italic">
-                * Jika Anda menjual dengan harga Rp 6.000/bungkus di kasir, maka keuntungan kotor Anda adalah Rp 2.675 per bungkus (Margin 44.5%).
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-background border border-line flex items-center gap-3 text-xs text-muted">
-              <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-              <span>
-                <strong>Eksekusi Atomik Database:</strong> Ketika Anda menekan <em>"Konfirmasi Produksi"</em>, stok bahan curah otomatis terpotong 5 kg dan stok kemasan bertambah 48 bungkus dalam 1 transaksi aman di database.
-              </span>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Tab 5: Kasir (POS) */}
+      {/* Tab 4: Kasir (POS) */}
       {activeTab === "pos" && (
         <div className="space-y-6 animate-in fade-in">
           <Card className="p-6 space-y-4">
@@ -375,27 +302,27 @@ export default function TutorialPage() {
               Operasional Kasir (Point of Sale) & Cetak Struk
             </h2>
             <p className="text-xs text-muted">
-              Halaman kasir didesain cepat dan nyaman digunakan baik di layar laptop maupun tablet kasir toko.
+              Layar kasir dibuat gesit untuk mempercepat antrean transaksi pelanggan di toko offline maupun pesanan online.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="p-4 rounded-xl border border-line bg-surface space-y-2">
-                <h4 className="font-bold text-xs text-foreground">Fitur Utama Kasir:</h4>
+                <h4 className="font-bold text-xs text-foreground">Fitur Kasir Pintar:</h4>
                 <ul className="text-xs text-muted space-y-1.5 list-disc list-inside">
-                  <li>Pencarian nama produk atau filter kategori instan.</li>
-                  <li>Keranjang belanja otomatis menghitung subtotal dan kuantitas.</li>
-                  <li>Kalkulator kembalian otomatis dengan tombol uang pas (10rb, 20rb, 50rb, 100rb).</li>
-                  <li>Pilihan metode bayar: <strong>Tunai, QRIS, Transfer</strong>.</li>
-                  <li>Input diskon fleksibel untuk potongan promosi.</li>
+                  <li>Cari snack dengan mengetik nama produk atau klik filter kategori.</li>
+                  <li>Keranjang belanja otomatis menghitung subtotal pesanan.</li>
+                  <li>Tombol uang cepat (10rb, 20rb, 50rb, 100rb) dan kalkulasi kembalian otomatis.</li>
+                  <li>Pilihan metode bayar fleksibel: <strong>Tunai, QRIS, Transfer</strong>.</li>
+                  <li>Fitur diskon rupiah langsung untuk potongan promosi.</li>
                 </ul>
               </div>
 
               <div className="p-4 rounded-xl border border-line bg-surface space-y-2">
-                <h4 className="font-bold text-xs text-foreground">Struk Nota Belanja:</h4>
+                <h4 className="font-bold text-xs text-foreground">Struk Belanja & Pengurangan Stok:</h4>
                 <ul className="text-xs text-muted space-y-1.5 list-disc list-inside">
-                  <li>Format struk profesional dengan logo COK Snack, nomor invoice, tanggal, rincian produk, dan pesan terima kasih.</li>
-                  <li>Dapat dicetak langsung ke printer thermal kasir via tombol <em>"Cetak Struk"</em>.</li>
-                  <li>Pesan footer struk dapat disesuaikan di menu <strong>Pengaturan</strong>.</li>
+                  <li>Format struk profesional lengkap dengan nama toko, no faktur, rincian barang, dan footer WhatsApp.</li>
+                  <li>Tombol <strong>Cetak Struk</strong> untuk printer thermal 58mm/80mm maupun print browser biasa.</li>
+                  <li>Stok produk di database berkurang secara atomik saat pembayaran sukses.</li>
                 </ul>
               </div>
             </div>
@@ -403,69 +330,79 @@ export default function TutorialPage() {
         </div>
       )}
 
-      {/* Tab 6: Keuangan & Laporan */}
+      {/* Tab 5: Laporan & Keuntungan */}
       {activeTab === "reports" && (
         <div className="space-y-6 animate-in fade-in">
           <Card className="p-6 space-y-4">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              Buku Kas Keuangan & Cetak Laporan Resmi (PDF)
+              <BarChart3 className="w-6 h-6 text-primary" />
+              Laporan Penjualan, Laba Rugi, & Cetak PDF Resmi
             </h2>
             <p className="text-xs text-muted">
-              Evaluasi kinerja keuangan toko dengan memantau pemasukan, pengeluaran operasional, serta mencetak dokumen resmi untuk arsip atau investor.
+              Evaluasi kinerja usaha secara transparan tanpa perlu menghitung buku kas manual yang membingungkan.
             </p>
 
             <div className="space-y-3 pt-2">
               <div className="p-4 rounded-xl bg-background border border-line space-y-2">
                 <h4 className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  Buku Kas Otomatis & Pengeluaran Operasional
+                  <TrendingUp className="w-4 h-4 text-success" />
+                  Kalkulasi Laba Kotor Otomatis (Gross Profit)
                 </h4>
-                <p className="text-xs text-muted">
-                  Setiap transaksi kasir otomatis masuk sebagai <em>Pemasukan Penjualan</em>, dan nota pembelian lunas otomatis masuk sebagai <em>Pengeluaran Bahan</em>. Di menu <strong>Keuangan</strong>, Anda juga dapat mencatat biaya operasional manual seperti listrik, bensin, atau gaji karyawan.
+                <p className="text-xs text-muted leading-relaxed">
+                  Setiap kali transaksi kasir terjadi, sistem menghitung modal barang dari <strong>HPP</strong> produk yang telah Anda tentukan. Rumus laba yang ditampilkan:
                 </p>
+                <div className="p-3 rounded-lg bg-surface border border-line text-xs font-mono text-primary font-bold">
+                  Laba Kotor = Total Omzet Kasir - Total Beban Pokok (HPP)
+                </div>
               </div>
 
               <div className="p-4 rounded-xl bg-background border border-line space-y-2">
                 <h4 className="font-bold text-xs text-foreground flex items-center gap-1.5">
                   <Printer className="w-4 h-4 text-primary" />
-                  Format Laporan Resmi PDF vs Ekspor CSV
+                  Format Dokumen Siap Cetak (A4 PDF) & Ekspor CSV
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted pt-1">
                   <div className="p-3 rounded-lg bg-surface border border-line">
                     <strong className="text-foreground block mb-1">1. Laporan Resmi PDF:</strong>
-                    Memiliki kop surat resmi COK Snack, ringkasan eksekutif omzet & HPP, tabel data formal, dan kolom tanda tangan pemilik toko. Siap dicetak langsung ke lembar A4.
+                    Telah dilengkapi kop surat resmi COK Snack, rekap omzet harian/bulanan, tabel transaksi faktur, serta lembar tanda tangan pemilik toko.
                   </div>
                   <div className="p-3 rounded-lg bg-surface border border-line">
                     <strong className="text-foreground block mb-1">2. Ekspor CSV:</strong>
-                    Mengunduh seluruh baris transaksi dalam format spreadsheet yang dapat dibuka langsung di Microsoft Excel atau Google Sheets untuk olah data lanjutan.
+                    Unduh data ke format spreadsheet untuk dibuka di Microsoft Excel atau Google Sheets kapan saja.
                   </div>
                 </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-rose-50/50 border border-rose-200 space-y-1 text-xs text-rose-800">
+                <strong className="block font-semibold">Penghapusan Transaksi Kasir:</strong>
+                <p>
+                  Jika terjadi kesalahan input di kasir, pemilik toko (Owner/Admin) dapat menghapus transaksi tertentu langsung di tabel laporan penjualan dengan mengklik ikon tempat sampah pada baris transaksi tersebut.
+                </p>
               </div>
             </div>
           </Card>
         </div>
       )}
 
-      {/* Tab 7: FAQ */}
+      {/* Tab 6: FAQ */}
       {activeTab === "faq" && (
         <div className="space-y-4 animate-in fade-in">
           {[
             {
-              q: "Apakah biaya plastik kemasan bisa diisi angka kecil seperti Rp 60/buah?",
-              a: "Bisa! Formulir alokasi biaya kemasan pada repacking maupun harga beli telah mendukung angka bebas tanpa pembulatan paksa, sehingga perhitungan HPP tetap presisi hingga satuan rupiah kecil.",
+              q: "Bagaimana cara menentukan HPP saat membuat produk baru?",
+              a: "HPP (Harga Pokok Penjualan) adalah estimasi modal per bungkus produk siap jual. Misalnya: harga snack per bungkus Rp 3.000 + biaya kemasan plastik & stiker Rp 500 = HPP Rp 3.500. Nilai ini Anda masukkan saat mendaftarkan produk baru di menu Produk & Stok.",
             },
             {
-              q: "Bagaimana jika ada produk kemasan yang bocor atau snack curah yang berjamur?",
-              a: "Buka menu 'Persediaan', cari produk terkait, lalu klik tombol 'Sesuaikan'. Pilih jenis 'Selisih Kurang/Rusak', masukkan jumlah susut dan alasannya. Sistem akan langsung memperbarui sisa stok dan mencatatnya ke log audit trail mutasi.",
+              q: "Jika harga snack naik dari produsen, apakah HPP produk bisa diedit?",
+              a: "Bisa! Cukup buka menu 'Produk & Stok', klik tombol pensil (Edit) pada produk terkait, ubah nilai HPP dan harga jualnya, lalu klik Simpan.",
             },
             {
-              q: "Apakah riwayat produk yang dihapus akan menimbulkan error?",
-              a: "Tidak. Basis data sudah menerapkan aturan CASCADE Delete sehingga seluruh mutasi stok dan riwayat repacking lama yang menempel pada produk tersebut akan terhapus bersih secara otomatis.",
+              q: "Bagaimana jika ada snack yang melempem, bocor, atau rusak di toko?",
+              a: "Buka menu 'Produk & Stok', klik tombol Edit, lalu sesuaikan jumlah stoknya ke angka aktual. Sistem akan langsung memperbarui sisa stok yang tersedia.",
             },
             {
-              q: "Bagaimana cara mencadangkan seluruh data usaha saya untuk disimpan offline?",
-              a: "Buka menu 'Pengaturan' di bilah samping, lalu pada bagian 'Status Database & Cadangan', klik tombol 'Unduh Cadangan JSON'. Seluruh daftar produk, nota pembelian, riwayat repacking, dan transaksi kasir akan terunduh sebagai 1 file arsip JSON aman.",
+              q: "Apakah kasir bisa menambah akun baru atau mengubah role?",
+              a: "Tidak bisa. Hak kontrol akun (tambah akun karyawan, hapus akun, dan upgrade role kasir/admin/owner) hanya dapat diakses oleh akun dengan peran Owner di menu 'Pengaturan Toko'. Karyawan kasir hanya bisa mengakses halaman profil mereka sendiri untuk ubah nama, no telepon, dan password.",
             },
           ].map((faq, i) => (
             <Card key={i} className="p-5">

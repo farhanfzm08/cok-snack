@@ -1,23 +1,22 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   TrendingUp,
   ShoppingCart,
-  Wallet,
   AlertTriangle,
   Package,
-  Layers,
+  Plus,
   ArrowUpRight,
-  ArrowDownRight,
-  PackageCheck,
-  ShoppingBasket,
-  Clock,
   Sparkles,
   BarChart3,
+  Search,
+  CheckCircle2,
+  Boxes,
+  X,
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,110 +32,164 @@ function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
+interface ProductItem {
+  id: string;
+  sku: string;
+  name: string;
+  package_weight_grams: number;
+  unit: string;
+  selling_price: number;
+  cost_price?: number;
+  current_stock: number;
+  min_stock_alert: number;
+  categories?: { name: string } | null;
+}
+
 export default function DashboardPage() {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<ProductItem[]>([]);
   const [todayOmzet, setTodayOmzet] = useState(0);
   const [todayTxCount, setTodayTxCount] = useState(0);
   const [todayGrossProfit, setTodayGrossProfit] = useState(0);
-  const [todayExpense, setTodayExpense] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [recentSales, setRecentSales] = useState<any[]>([]);
-  const [recentRepacks, setRecentRepacks] = useState<any[]>([]);
+
+  // Search & Filter Produk di Dashboard
+  const [searchProduct, setSearchProduct] = useState("");
+
+  // Modal Tambah Stok Cepat
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+  const [stockAddAmount, setStockAddAmount] = useState("20");
+  const [isSavingStock, setIsSavingStock] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      // 1. Fetch Products
+      const { data: prodData } = await supabase
+        .from("products")
+        .select("*, categories(name)")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+
+      if (prodData) {
+        setProducts(prodData as ProductItem[]);
+        const lowStock = prodData.filter(
+          (p: any) => Number(p.current_stock) <= Number(p.min_stock_alert)
+        );
+        setLowStockCount(lowStock.length);
+      }
+
+      // 2. Fetch Sales
+      const { data: salesData } = await supabase
+        .from("sales")
+        .select("*")
+        .order("sale_date", { ascending: false });
+
+      if (salesData) {
+        const todaySales = salesData.filter((s: any) =>
+          s.sale_date.startsWith(todayStr)
+        );
+
+        const omzet = todaySales.reduce(
+          (sum: number, s: any) => sum + Number(s.total_amount || 0),
+          0
+        );
+        const cogs = todaySales.reduce(
+          (sum: number, s: any) => sum + Number(s.total_cogs || 0),
+          0
+        );
+
+        setTodayOmzet(omzet);
+        setTodayTxCount(todaySales.length);
+        setTodayGrossProfit(omzet - cogs);
+        setRecentSales(salesData.slice(0, 5));
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      try {
-        const todayStr = new Date().toISOString().split("T")[0];
-
-        // 1. Fetch Sales
-        const { data: salesData } = await supabase
-          .from("sales")
-          .select("*")
-          .order("sale_date", { ascending: false });
-
-        if (salesData) {
-          const todaySales = salesData.filter((s: any) =>
-            s.sale_date.startsWith(todayStr)
-          );
-
-          const omzet = todaySales.reduce(
-            (sum: number, s: any) => sum + Number(s.total_amount || 0),
-            0
-          );
-          const cogs = todaySales.reduce(
-            (sum: number, s: any) => sum + Number(s.total_cogs || 0),
-            0
-          );
-
-          setTodayOmzet(omzet);
-          setTodayTxCount(todaySales.length);
-          setTodayGrossProfit(omzet - cogs);
-          setRecentSales(salesData.slice(0, 5));
-        }
-
-        // 2. Fetch Expenses Today
-        const { data: expenseData } = await supabase
-          .from("cash_movements")
-          .select("amount")
-          .eq("type", "expense")
-          .eq("movement_date", todayStr);
-
-        if (expenseData) {
-          const expense = expenseData.reduce(
-            (sum: number, e: any) => sum + Number(e.amount || 0),
-            0
-          );
-          setTodayExpense(expense);
-        }
-
-        // 3. Fetch Products for Low Stock Alert
-        const { data: prodData } = await supabase
-          .from("products")
-          .select("current_stock, min_stock_alert")
-          .eq("is_active", true);
-
-        if (prodData) {
-          const lowStock = prodData.filter(
-            (p: any) => Number(p.current_stock) <= Number(p.min_stock_alert)
-          );
-          setLowStockCount(lowStock.length);
-        }
-
-        // 4. Fetch Repacking Orders
-        const { data: repackData } = await supabase
-          .from("repacking_orders")
-          .select("*, raw_product:products!raw_material_product_id(name), finished_product:products!finished_product_id(name)")
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        if (repackData) {
-          setRecentRepacks(repackData);
-        }
-      } catch (err: any) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDashboardData();
   }, []);
 
+  const handleQuickAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    const addNum = Number(stockAddAmount) || 0;
+    if (addNum <= 0) return;
+
+    setIsSavingStock(true);
+    try {
+      const newStock = Number(selectedProduct.current_stock || 0) + addNum;
+
+      // 1. Update stock di products
+      const { error } = await supabase
+        .from("products")
+        .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+        .eq("id", selectedProduct.id);
+
+      if (error) throw error;
+
+      // 2. Catat mutasi stok
+      await supabase.from("stock_movements").insert([
+        {
+          product_id: selectedProduct.id,
+          movement_type: "adjustment_found",
+          quantity_change: addNum,
+          stock_after: newStock,
+          reason: "Tambah stok masuk dari dashboard",
+        },
+      ]);
+
+      setToastMsg(`Stok "${selectedProduct.name}" berhasil ditambah +${addNum} bungkus!`);
+      setIsStockModalOpen(false);
+      setSelectedProduct(null);
+      fetchDashboardData();
+      setTimeout(() => setToastMsg(null), 3000);
+    } catch (err: any) {
+      alert("Gagal menambah stok: " + err.message);
+    } finally {
+      setIsSavingStock(false);
+    }
+  };
+
+  const filteredProducts = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchProduct.toLowerCase()) ||
+      p.sku.toLowerCase().includes(searchProduct.toLowerCase())
+  );
+
   const summaryCards = [
     {
-      title: "Omzet Hari Ini",
-      value: formatRupiah(todayOmzet),
-      subtitle: `${todayTxCount} transaksi selesai`,
-      icon: TrendingUp,
+      title: "Total Produk Aktif",
+      value: `${products.length} Produk`,
+      subtitle: "Snack kemasan siap jual",
+      icon: Package,
       accent: "lavender" as const,
       iconColor: "text-primary",
       iconBg: "bg-lavender",
     },
     {
-      title: "Estimasi Laba Kotor",
+      title: "Omzet Hari Ini",
+      value: formatRupiah(todayOmzet),
+      subtitle: `${todayTxCount} transaksi kasir selesai`,
+      icon: TrendingUp,
+      accent: "peach" as const,
+      iconColor: "text-[#A04128]",
+      iconBg: "bg-peach",
+    },
+    {
+      title: "Estimasi Laba Hari Ini",
       value: formatRupiah(todayGrossProfit),
       subtitle: "Omzet dikurangi modal HPP",
       icon: Sparkles,
@@ -145,18 +198,9 @@ export default function DashboardPage() {
       iconBg: "bg-mint",
     },
     {
-      title: "Pengeluaran Hari Ini",
-      value: formatRupiah(todayExpense),
-      subtitle: "Biaya operasional & kemasan",
-      icon: Wallet,
-      accent: "peach" as const,
-      iconColor: "text-[#A04128]",
-      iconBg: "bg-peach",
-    },
-    {
       title: "Peringatan Stok Menipis",
       value: `${lowStockCount} Produk`,
-      subtitle: "Perlu repacking / belanja",
+      subtitle: lowStockCount > 0 ? "Perlu tambah stok bungkus!" : "Semua stok aman",
       icon: AlertTriangle,
       accent: "yellow" as const,
       iconColor: "text-warning",
@@ -166,6 +210,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-lg border border-success/40 bg-surface text-success text-sm flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* Top Banner / Welcome Action */}
       <div className="bg-surface border border-line rounded-3xl p-6 sm:p-7 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
         <div className="space-y-1">
@@ -174,11 +226,10 @@ export default function DashboardPage() {
             <Badge variant="mint">Database Terhubung</Badge>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Halo, Selamat Datang di Dashboard COK Snack!
+            Halo, Selamat Datang di COK Snack!
           </h1>
           <p className="text-sm text-muted max-w-xl">
-            Sistem manajemen stok curah kg, produksi repacking ke gram, dan kasir
-            penjualan telah terhubung dengan database Supabase PostgreSQL.
+            Sistem kasir penjualan snack kemasan dan monitoring persediaan stok produk secara terintegrasi.
           </p>
         </div>
 
@@ -189,10 +240,10 @@ export default function DashboardPage() {
               <span>Buka Kasir</span>
             </Button>
           </Link>
-          <Link href="/repacking">
+          <Link href="/products">
             <Button variant="secondary" size="md">
-              <PackageCheck className="w-4 h-4" />
-              <span>Input Repack</span>
+              <Plus className="w-4 h-4" />
+              <span>Tambah Produk Baru</span>
             </Button>
           </Link>
         </div>
@@ -225,84 +276,155 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Grid: Production/Stock Overview & Quick Workflow */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Repack & Stock Quick Action */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader
-              title="Aktivitas Produksi Repacking Terkini"
-              subtitle="Konversi bahan mentah (kg) menjadi kemasan snack eceran (gram)"
-              action={
-                <Link href="/repacking">
-                  <Button variant="ghost" size="sm">
-                    <span>Lihat Semua</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              }
-            />
+      {/* SECTION UTAMA: FOKUS MENAMPILKAN PRODUK */}
+      <Card className="overflow-hidden">
+        <div className="p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-lavender/10">
+          <div>
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" />
+              <span>Katalog & Persediaan Stok Produk</span>
+            </h2>
+            <p className="text-xs text-muted">
+              Monitoring seluruh snack kemasan, harga jual, estimasi HPP, dan kuantiti stok saat ini.
+            </p>
+          </div>
 
-            {recentRepacks.length === 0 ? (
-              <div className="p-8 text-center flex flex-col items-center justify-center rounded-2xl bg-background/50 border border-dashed border-line">
-                <div className="w-12 h-12 rounded-2xl bg-mint text-success flex items-center justify-center mb-3">
-                  <PackageCheck className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-semibold text-foreground">
-                  Belum Ada Batch Repacking
-                </h4>
-                <p className="text-xs text-muted max-w-sm mt-1">
-                  Catat proses repacking dari bahan curah kiloan menjadi bungkus kemasan kecil dengan kalkulasi HPP otomatis.
-                </p>
-                <Link href="/repacking" className="mt-4">
-                  <Button variant="secondary" size="sm">
-                    <PackageCheck className="w-3.5 h-3.5" />
-                    <span>Mulai Repacking Pertama</span>
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-line text-muted uppercase tracking-wider font-semibold">
-                      <th className="py-2.5 px-3">No. Batch</th>
-                      <th className="py-2.5 px-3">Bahan Curah</th>
-                      <th className="py-2.5 px-3">Hasil Repack</th>
-                      <th className="py-2.5 px-3 text-right">HPP / Bks</th>
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari nama atau kode produk..."
+                value={searchProduct}
+                onChange={(e) => setSearchProduct(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 bg-background border border-line rounded-xl text-xs focus:outline-hidden focus:border-primary"
+              />
+            </div>
+            <Link href="/products">
+              <Button variant="outline" size="sm" className="whitespace-nowrap text-xs">
+                <span>Kelola Semua</span>
+                <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center text-xs text-muted">Memuat data produk...</div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="p-12 text-center text-muted space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-lavender text-primary flex items-center justify-center mx-auto">
+              <Package className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">Belum ada produk yang ditemukan</p>
+            <p className="text-xs text-muted max-w-sm mx-auto">
+              Silakan tambahkan produk snack baru untuk mulai berjualan di kasir.
+            </p>
+            <Link href="/products" className="inline-block mt-2">
+              <Button variant="primary" size="sm">
+                <Plus className="w-4 h-4 mr-1" />
+                Tambah Produk Sekarang
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-line text-muted uppercase tracking-wider font-semibold bg-surface/50">
+                  <th className="py-3 px-4">Nama Produk & SKU</th>
+                  <th className="py-3 px-4">Ukuran Kemasan</th>
+                  <th className="py-3 px-4 text-right">Modal HPP</th>
+                  <th className="py-3 px-4 text-right">Harga Jual Kasir</th>
+                  <th className="py-3 px-4 text-center">Stok Tersedia</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-right">Aksi Cepat</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {filteredProducts.map((p) => {
+                  const isLow = Number(p.current_stock) <= Number(p.min_stock_alert);
+                  return (
+                    <tr key={p.id} className="hover:bg-background/50 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-foreground text-sm">{p.name}</div>
+                        <div className="text-muted font-mono text-[11px] flex items-center gap-1.5 mt-0.5">
+                          <span>{p.sku}</span>
+                          {p.categories?.name && (
+                            <span className="text-primary font-sans bg-lavender/60 px-1.5 py-0.2 rounded-md">
+                              {p.categories.name}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-foreground">
+                        {p.package_weight_grams ? `${p.package_weight_grams} gram` : p.unit || "pack"}
+                      </td>
+                      <td className="py-3 px-4 text-right text-muted font-medium">
+                        {formatRupiah(Number(p.cost_price || 0))}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-foreground text-sm">
+                        {formatRupiah(Number(p.selling_price || 0))}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`font-bold text-sm ${
+                            isLow ? "text-danger" : "text-foreground"
+                          }`}
+                        >
+                          {Number(p.current_stock || 0)}
+                        </span>{" "}
+                        <span className="text-muted text-[11px]">{p.unit || "bks"}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {isLow ? (
+                          <Badge variant="peach" size="sm" className="inline-flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-danger" />
+                            Stok Tipis
+                          </Badge>
+                        ) : (
+                          <Badge variant="mint" size="sm">
+                            Aman
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProduct(p);
+                            setStockAddAmount("20");
+                            setIsStockModalOpen(true);
+                          }}
+                          className="text-xs h-7 px-2.5 gap-1 border-line hover:border-primary text-muted hover:text-foreground"
+                          title="Tambah Stok Masuk"
+                        >
+                          <Plus className="w-3 h-3 text-primary" />
+                          <span>+ Stok</span>
+                        </Button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line/60">
-                    {recentRepacks.map((r) => (
-                      <tr key={r.id} className="hover:bg-background/50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-foreground">
-                          {r.order_number}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          {r.raw_product?.name} ({r.raw_material_used_kg} kg)
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-success">
-                          +{r.actual_output_packs} bks ({r.finished_product?.name})
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-primary">
-                          {formatRupiah(r.calculated_cogs_per_pack)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
-          <Card>
+      {/* Grid Bawah: Transaksi Kasir Terkini & Navigasi Ringkas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Kolom Kiri: 2 Cols Transaksi Kasir Terkini */}
+        <div className="lg:col-span-2">
+          <Card className="p-5">
             <CardHeader
-              title="Aktivitas Transaksi Penjualan Terkini"
-              subtitle="Riwayat struk kasir dan pergerakan kas masuk"
+              title="Aktivitas Penjualan Kasir Terkini"
+              subtitle="Riwayat struk kasir yang baru saja diselesaikan"
               action={
-                <Link href="/pos">
+                <Link href="/reports">
                   <Button variant="ghost" size="sm">
-                    <span>Lihat Semua</span>
+                    <span>Lihat Laporan</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
@@ -315,11 +437,10 @@ export default function DashboardPage() {
                   <ShoppingCart className="w-6 h-6" />
                 </div>
                 <h4 className="text-sm font-semibold text-foreground">
-                  Belum Ada Transaksi Kasir
+                  Belum Ada Transaksi Kasir Hari Ini
                 </h4>
                 <p className="text-xs text-muted max-w-sm mt-1">
-                  Seluruh transaksi kasir akan tercatat secara atomik di database
-                  dengan rincian produk, metode bayar (Tunai/QRIS/Transfer), dan snapshot HPP.
+                  Transaksi kasir akan otomatis tercatat di sini dan memotong stok produk secara atomik. Gunakan tombol "Buka Kasir" di atas untuk melayani pelanggan.
                 </p>
               </div>
             ) : (
@@ -329,7 +450,7 @@ export default function DashboardPage() {
                     <tr className="border-b border-line text-muted uppercase tracking-wider font-semibold">
                       <th className="py-2.5 px-3">No. Invoice</th>
                       <th className="py-2.5 px-3">Waktu</th>
-                      <th className="py-2.5 px-3">Metode</th>
+                      <th className="py-2.5 px-3">Metode Bayar</th>
                       <th className="py-2.5 px-3 text-right">Total Belanja</th>
                     </tr>
                   </thead>
@@ -360,10 +481,10 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Right 1 Col: Quick Links & Master Data Progress */}
+        {/* Kolom Kanan: 1 Col Pintasan Cepat */}
         <div className="space-y-6">
           <Card pastelAccent="lavender">
-            <CardHeader title="Navigasi Cepat Modul" />
+            <CardHeader title="Navigasi Menu Utama" />
             <div className="space-y-2">
               <Link
                 href="/products"
@@ -375,10 +496,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Katalog Produk
+                      Katalog & Stok Produk
                     </p>
                     <p className="text-[11px] text-muted">
-                      Kelola SKU & harga snack
+                      Kelola SKU, HPP, & harga jual
                     </p>
                   </div>
                 </div>
@@ -386,23 +507,23 @@ export default function DashboardPage() {
               </Link>
 
               <Link
-                href="/finance"
-                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-mint/50 transition-colors group"
+                href="/pos"
+                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-peach/50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-surface text-success flex items-center justify-center border border-line">
-                    <Wallet className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-surface text-[#A04128] flex items-center justify-center border border-line">
+                    <ShoppingCart className="w-4 h-4" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Keuangan & Arus Kas
+                      Kasir Toko (POS)
                     </p>
                     <p className="text-[11px] text-muted">
-                      Buku kas keluar & masuk
+                      Transaksi & cetak struk kasir
                     </p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-muted group-hover:text-success transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-muted group-hover:text-[#A04128] transition-colors" />
               </Link>
 
               <Link
@@ -415,10 +536,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Laporan & Rekapitulasi
+                      Laporan Penjualan & Laba
                     </p>
                     <p className="text-[11px] text-muted">
-                      Omzet, HPP & ekspor CSV
+                      Omzet, HPP, & cetak PDF resmi
                     </p>
                   </div>
                 </div>
@@ -427,38 +548,103 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          <Card>
-            <CardHeader title="Informasi Sistem" />
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-line/60">
-                <span className="text-muted">Database Engine</span>
-                <span className="font-semibold text-foreground">
-                  PostgreSQL 15+ Supabase
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-line/60">
-                <span className="text-muted">Sistem Arus Kas</span>
-                <Badge variant="mint" size="sm">
-                  Otomatis Terhubung
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-line/60">
-                <span className="text-muted">Metode Kalkulasi</span>
-                <span className="font-semibold text-foreground">
-                  FIFO / FEFO & Snapshot HPP
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-muted">Status Server</span>
-                <span className="inline-flex items-center gap-1.5 font-semibold text-success">
-                  <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  Online
-                </span>
-              </div>
-            </div>
+          <Card className="p-4">
+            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">
+              Alur Kerja Praktis COK Snack
+            </h3>
+            <ol className="text-xs text-muted space-y-2 list-decimal list-inside">
+              <li>
+                <strong className="text-foreground">Tambah Produk</strong> baru beserta modal HPP dan harga jual.
+              </li>
+              <li>
+                <strong className="text-foreground">Tambah Stok</strong> bungkus jika ada produksi snack baru siap jual.
+              </li>
+              <li>
+                <strong className="text-foreground">Kasir (POS)</strong> melayani pembeli dan mencetak struk.
+              </li>
+              <li>
+                <strong className="text-foreground">Laporan</strong> memantau omzet & laba bersih otomatis!
+              </li>
+            </ol>
           </Card>
         </div>
       </div>
+
+      {/* MODAL TAMBAH STOK CEPAT DI DASHBOARD */}
+      {isStockModalOpen && selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
+          <div className="bg-surface border border-line rounded-3xl max-w-sm w-full p-6 shadow-xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground">Tambah Stok Snack</h3>
+                <p className="text-xs text-muted">{selectedProduct.name}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsStockModalOpen(false);
+                  setSelectedProduct(null);
+                }}
+                className="p-1.5 text-muted hover:text-foreground rounded-xl"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddStock} className="space-y-4 text-sm">
+              <div className="p-3 bg-background rounded-xl border border-line flex justify-between items-center text-xs">
+                <span className="text-muted">Stok Saat Ini:</span>
+                <span className="font-bold text-foreground text-sm">
+                  {selectedProduct.current_stock} {selectedProduct.unit || "bks"}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Jumlah Stok Masuk ({selectedProduct.unit || "bungkus"}) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={stockAddAmount}
+                  onChange={(e) => setStockAddAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-background border border-line rounded-xl text-base font-bold text-primary focus:outline-hidden focus:border-primary"
+                />
+                <p className="text-[11px] text-muted mt-1">
+                  Stok akhir akan menjadi:{" "}
+                  <strong>
+                    {Number(selectedProduct.current_stock || 0) +
+                      (Number(stockAddAmount) || 0)}{" "}
+                    {selectedProduct.unit || "bungkus"}
+                  </strong>
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsStockModalOpen(false);
+                    setSelectedProduct(null);
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={isSavingStock}
+                >
+                  {isSavingStock ? "Menyimpan..." : "Simpan Tambah Stok"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

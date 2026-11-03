@@ -46,19 +46,6 @@ interface SaleRecord {
   }[];
 }
 
-interface RepackRecord {
-  id: string;
-  order_number: string;
-  production_date: string;
-  raw_material_used_kg: number;
-  actual_output_packs: number;
-  waste_shrinkage_grams: number;
-  total_production_cost: number;
-  calculated_cogs_per_pack: number;
-  raw_product?: { name: string };
-  finished_product?: { name: string };
-}
-
 interface StockMovementRecord {
   id: string;
   created_at: string;
@@ -81,11 +68,10 @@ function formatRupiah(amount: number): string {
 export default function ReportsPage() {
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<"sales" | "repack" | "stock">("sales");
+  const [activeTab, setActiveTab] = useState<"sales" | "stock">("sales");
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "month" | "all">("all");
 
   const [sales, setSales] = useState<SaleRecord[]>([]);
-  const [repacks, setRepacks] = useState<RepackRecord[]>([]);
   const [movements, setMovements] = useState<StockMovementRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -125,15 +111,7 @@ export default function ReportsPage() {
 
       if (salesData) setSales(salesData as any);
 
-      // 2. Fetch Repacking Orders
-      const { data: repackData } = await supabase
-        .from("repacking_orders")
-        .select("*, raw_product:products!raw_material_product_id(name), finished_product:products!finished_product_id(name)")
-        .order("production_date", { ascending: false });
-
-      if (repackData) setRepacks(repackData as any);
-
-      // 3. Fetch Stock Movements
+      // 2. Fetch Stock Movements
       const { data: movData } = await supabase
         .from("stock_movements")
         .select("*, products(name, unit, type)")
@@ -200,7 +178,6 @@ export default function ReportsPage() {
   };
 
   const filteredSales = sales.filter((s) => filterByDate(s.sale_date));
-  const filteredRepacks = repacks.filter((r) => filterByDate(r.production_date));
   const filteredMovements = movements.filter((m) => filterByDate(m.created_at));
 
   // Calculations for Sales Report
@@ -231,19 +208,6 @@ export default function ReportsPage() {
         s.total_amount,
         s.total_cogs,
         s.total_amount - s.total_cogs,
-      ]);
-    } else if (activeTab === "repack") {
-      headers = ["No. Order", "Tanggal", "Bahan Baku", "Bahan Digunakan (kg)", "Produk Jadi", "Hasil (Bungkus)", "Susut (Gram)", "Total Biaya", "HPP per Bungkus"];
-      rows = filteredRepacks.map((r) => [
-        r.order_number,
-        r.production_date,
-        r.raw_product?.name || "-",
-        r.raw_material_used_kg,
-        r.finished_product?.name || "-",
-        r.actual_output_packs,
-        r.waste_shrinkage_grams,
-        r.total_production_cost,
-        r.calculated_cogs_per_pack,
       ]);
     } else {
       headers = ["Waktu", "Nama Produk", "Tipe Mutasi", "Perubahan Kuantitas", "Stok Akhir", "Keterangan"];
@@ -293,7 +257,7 @@ export default function ReportsPage() {
             <span>Laporan & Rekapitulasi Usaha</span>
           </h1>
           <p className="text-sm text-muted">
-            Evaluasi omzet kasir, laba kotor UMKM, efisiensi repacking, dan dokumen resmi cetak PDF.
+            Evaluasi omzet kasir, beban modal HPP, estimasi laba kotor, dan dokumen resmi cetak PDF.
           </p>
         </div>
 
@@ -347,18 +311,6 @@ export default function ReportsPage() {
         >
           <TrendingUp className="w-4 h-4" />
           <span>Laporan Penjualan & Laba Kotor ({filteredSales.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("repack")}
-          className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 ${
-            activeTab === "repack"
-              ? "bg-lavender text-primary-dark font-bold shadow-2xs"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          <PackageCheck className="w-4 h-4" />
-          <span>Produksi Repacking ({filteredRepacks.length})</span>
         </button>
 
         <button
@@ -496,63 +448,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Content Tab 2: Repacking Report */}
-      {activeTab === "repack" && (
-        <Card className="p-5">
-          <CardHeader
-            title="Rekapitulasi Produksi Repacking"
-            subtitle="Laporan pemakaian bahan baku curah (kg), output kemasan (bungkus), dan susut produksi."
-          />
-          {filteredRepacks.length === 0 ? (
-            <div className="py-12 text-center text-muted text-sm">
-              Belum ada riwayat repacking pada periode ini.
-            </div>
-          ) : (
-            <div className="overflow-x-auto mt-4">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-line text-xs font-semibold text-muted uppercase tracking-wider">
-                    <th className="py-3 px-3">No. Order</th>
-                    <th className="py-3 px-3">Tanggal</th>
-                    <th className="py-3 px-3">Bahan Baku (Curah)</th>
-                    <th className="py-3 px-3">Hasil Jadi (Kemasan)</th>
-                    <th className="py-3 px-3 text-right">Susut</th>
-                    <th className="py-3 px-3 text-right">Total Biaya</th>
-                    <th className="py-3 px-3 text-right">HPP / Bungkus</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {filteredRepacks.map((r) => (
-                    <tr key={r.id} className="hover:bg-background/60 transition-colors">
-                      <td className="py-3 px-3 font-semibold text-foreground text-xs">{r.order_number}</td>
-                      <td className="py-3 px-3 text-xs text-muted">{r.production_date}</td>
-                      <td className="py-3 px-3">
-                        <p className="font-semibold text-foreground text-xs">{r.raw_product?.name || "-"}</p>
-                        <p className="text-[11px] text-muted">{r.raw_material_used_kg} kg dipakai</p>
-                      </td>
-                      <td className="py-3 px-3">
-                        <p className="font-semibold text-foreground text-xs">{r.finished_product?.name || "-"}</p>
-                        <p className="text-[11px] text-success font-semibold">{r.actual_output_packs} bungkus layak</p>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs text-danger">
-                        {r.waste_shrinkage_grams} gram
-                      </td>
-                      <td className="py-3 px-3 text-right font-semibold text-foreground">
-                        {formatRupiah(Number(r.total_production_cost || 0))}
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold text-primary-dark">
-                        {formatRupiah(Number(r.calculated_cogs_per_pack || 0))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Content Tab 3: Stock Movements Report */}
+      {/* Content Tab 2: Stock Movements Report */}
       {activeTab === "stock" && (
         <Card className="p-5">
           <CardHeader
@@ -672,8 +568,6 @@ export default function ReportsPage() {
                   <h2 className="text-base font-extrabold text-black uppercase tracking-wider">
                     {activeTab === "sales"
                       ? "LAPORAN RESMI REKAPITULASI PENJUALAN & LABA KOTOR"
-                      : activeTab === "repack"
-                      ? "LAPORAN RESMI PRODUKSI REPACKING SNACK"
                       : "LAPORAN RESMI AUDIT MUTASI PERSEDIAAN"}
                   </h2>
                   <p className="text-xs text-gray-600 mt-0.5">
@@ -734,16 +628,6 @@ export default function ReportsPage() {
                         <th className="py-2.5 px-3 text-right border-r border-gray-400">HPP (Rp)</th>
                         <th className="py-2.5 px-3 text-right">Laba (Rp)</th>
                       </tr>
-                    ) : activeTab === "repack" ? (
-                      <tr>
-                        <th className="py-2.5 px-3 border-r border-gray-400">No.</th>
-                        <th className="py-2.5 px-3 border-r border-gray-400">No. Order</th>
-                        <th className="py-2.5 px-3 border-r border-gray-400">Tanggal</th>
-                        <th className="py-2.5 px-3 border-r border-gray-400">Bahan Mentah</th>
-                        <th className="py-2.5 px-3 border-r border-gray-400">Hasil Kemasan</th>
-                        <th className="py-2.5 px-3 text-right border-r border-gray-400">Susut</th>
-                        <th className="py-2.5 px-3 text-right">HPP/Pack</th>
-                      </tr>
                     ) : (
                       <tr>
                         <th className="py-2.5 px-3 border-r border-gray-400">No.</th>
@@ -776,26 +660,6 @@ export default function ReportsPage() {
                           </td>
                           <td className="py-2 px-3 text-right font-bold">
                             {(Number(s.total_amount || 0) - Number(s.total_cogs || 0)).toLocaleString("id-ID")}
-                          </td>
-                        </tr>
-                      ))
-                    ) : activeTab === "repack" ? (
-                      filteredRepacks.map((r, idx) => (
-                        <tr key={r.id} className="border-b border-gray-300">
-                          <td className="py-2 px-3 border-r border-gray-300 text-center">{idx + 1}</td>
-                          <td className="py-2 px-3 border-r border-gray-300 font-mono">{r.order_number}</td>
-                          <td className="py-2 px-3 border-r border-gray-300">{r.production_date}</td>
-                          <td className="py-2 px-3 border-r border-gray-300">
-                            {r.raw_product?.name} ({r.raw_material_used_kg} kg)
-                          </td>
-                          <td className="py-2 px-3 border-r border-gray-300">
-                            {r.finished_product?.name} ({r.actual_output_packs} bks)
-                          </td>
-                          <td className="py-2 px-3 border-r border-gray-300 text-right text-red-600 font-mono">
-                            {r.waste_shrinkage_grams} g
-                          </td>
-                          <td className="py-2 px-3 text-right font-bold">
-                            Rp {Number(r.calculated_cogs_per_pack || 0).toLocaleString("id-ID")}
                           </td>
                         </tr>
                       ))

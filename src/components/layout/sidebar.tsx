@@ -7,11 +7,6 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Package,
-  Boxes,
-  ShoppingBasket,
-  Truck,
-  PackageCheck,
-  Wallet,
   BarChart3,
   Settings,
   Store,
@@ -32,22 +27,17 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Kasir (POS)", href: "/pos", icon: ShoppingCart, pastelBg: "bg-peach" },
-  { name: "Produk", href: "/products", icon: Package },
-  { name: "Persediaan", href: "/inventory", icon: Boxes },
-  { name: "Pembelian", href: "/purchases", icon: ShoppingBasket },
-  { name: "Supplier", href: "/suppliers", icon: Truck },
-  { name: "Repacking", href: "/repacking", icon: PackageCheck, pastelBg: "bg-mint" },
-  { name: "Keuangan", href: "/finance", icon: Wallet },
-  { name: "Laporan", href: "/reports", icon: BarChart3 },
-  { name: "Panduan & Tutorial", href: "/tutorial", icon: BookOpen, pastelBg: "bg-sky" },
-  { name: "Pengaturan", href: "/settings", icon: Settings },
+  { name: "Produk & Stok", href: "/products", icon: Package },
+  { name: "Laporan Penjualan", href: "/reports", icon: BarChart3 },
+  { name: "Panduan Sistem", href: "/tutorial", icon: BookOpen, pastelBg: "bg-sky" },
+  { name: "Pengaturan Toko", href: "/settings", icon: Settings },
   { name: "Profil Saya", href: "/profile", icon: User },
 ];
 
 // Role-based menu visibility
 const ROLE_MENU: Record<string, string[]> = {
   kasir: ["/pos", "/dashboard", "/profile"],
-  admin: ["/pos", "/dashboard", "/products", "/suppliers", "/purchases", "/inventory", "/repacking", "/reports", "/tutorial", "/profile"],
+  admin: ["/pos", "/dashboard", "/products", "/reports", "/tutorial", "/profile"],
   owner: ["*"],
 };
 

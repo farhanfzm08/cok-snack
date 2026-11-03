@@ -62,8 +62,8 @@ export default function SettingsPage() {
   const [dbStats, setDbStats] = useState({
     productsCount: 0,
     salesCount: 0,
-    repackingCount: 0,
-    purchasesCount: 0,
+    usersCount: 0,
+    movementsCount: 0,
   });
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -133,18 +133,18 @@ export default function SettingsPage() {
         const { count: sCount } = await supabase
           .from("sales")
           .select("*", { count: "exact", head: true });
-        const { count: rCount } = await supabase
-          .from("repacking_orders")
+        const { count: uCount } = await supabase
+          .from("profiles")
           .select("*", { count: "exact", head: true });
-        const { count: bCount } = await supabase
-          .from("purchases")
+        const { count: mCount } = await supabase
+          .from("stock_movements")
           .select("*", { count: "exact", head: true });
 
         setDbStats({
           productsCount: pCount || 0,
           salesCount: sCount || 0,
-          repackingCount: rCount || 0,
-          purchasesCount: bCount || 0,
+          usersCount: uCount || 0,
+          movementsCount: mCount || 0,
         });
       } catch (err) {
         console.error(err);
@@ -615,15 +615,15 @@ export default function SettingsPage() {
             </span>
           </div>
           <div className="p-3 bg-background rounded-xl border border-line text-center">
-            <span className="text-xs text-muted block">Order Repacking</span>
+            <span className="text-xs text-muted block">Akun Pengguna</span>
             <span className="font-bold text-base text-foreground mt-0.5 block">
-              {dbStats.repackingCount}
+              {dbStats.usersCount}
             </span>
           </div>
           <div className="p-3 bg-background rounded-xl border border-line text-center">
-            <span className="text-xs text-muted block">Nota Pembelian</span>
+            <span className="text-xs text-muted block">Mutasi Stok</span>
             <span className="font-bold text-base text-foreground mt-0.5 block">
-              {dbStats.purchasesCount}
+              {dbStats.movementsCount}
             </span>
           </div>
         </div>
@@ -741,7 +741,7 @@ export default function SettingsPage() {
                   className="w-full bg-background border border-line rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary font-medium"
                 >
                   <option value="kasir">🧾 Kasir (Hanya akses transaksi POS kasir)</option>
-                  <option value="admin">⚙️ Admin (Akses operasional stok & repacking)</option>
+                  <option value="admin">⚙️ Admin (Akses operasional produk, stok & kasir)</option>
                   <option value="owner">👑 Owner (Akses penuh ke seluruh sistem)</option>
                 </select>
               </div>
