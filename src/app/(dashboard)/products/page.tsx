@@ -529,31 +529,29 @@ export default function ProductsPage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
+                          <div className="flex items-center justify-end gap-2">
+                            <button
                               onClick={() => {
                                 setSelectedProductForStock(p);
                                 setStockAddAmount("20");
                                 setIsStockModalOpen(true);
                               }}
-                              className="text-xs h-7 px-2.5 gap-1 border-line hover:border-primary text-muted hover:text-foreground"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-line bg-surface hover:bg-lavender/30 hover:border-primary text-foreground transition-colors"
                               title="Tambah Stok Bungkus"
                             >
-                              <Plus className="w-3 h-3 text-primary" />
-                              <span>+ Stok</span>
-                            </Button>
+                              <Plus className="w-3.5 h-3.5 text-primary" />
+                              <span>Tambah Stok</span>
+                            </button>
                             <button
                               onClick={() => handleOpenEdit(p)}
-                              className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-lavender/50 transition-colors"
+                              className="p-1.5 rounded-lg border border-line bg-surface text-muted hover:text-primary hover:border-primary hover:bg-lavender/20 transition-colors"
                               title="Edit Detail Produk"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteProduct(p.id, p.name)}
-                              className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-red-50 transition-colors"
+                              className="p-1.5 rounded-lg border border-line bg-surface text-muted hover:text-danger hover:border-rose-300 hover:bg-rose-50 transition-colors"
                               title="Hapus Produk"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -608,7 +606,7 @@ export default function ProductsPage() {
       {/* MODAL 1: TAMBAH PRODUK BARU */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
-          <div className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface border border-line rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
               <div>
                 <h3 className="text-base font-bold text-foreground">Tambah Produk Snack Baru</h3>
@@ -782,7 +780,7 @@ export default function ProductsPage() {
       {/* MODAL 2: EDIT PRODUK */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
-          <div className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface border border-line rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
               <div>
                 <h3 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -945,7 +943,7 @@ export default function ProductsPage() {
       {/* MODAL 3: TAMBAH STOK CEPAT */}
       {isStockModalOpen && selectedProductForStock && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
-          <div className="bg-surface border border-line rounded-3xl max-w-sm w-full p-6 shadow-xl relative">
+          <div className="bg-surface border border-line rounded-2xl max-w-sm w-full p-6 relative">
             <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
               <div>
                 <h3 className="text-base font-bold text-foreground">Tambah Stok Snack Masuk</h3>
@@ -1016,7 +1014,7 @@ export default function ProductsPage() {
       {/* MODAL 4: TAMBAH KATEGORI */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
-          <div className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 shadow-xl relative">
+          <div className="bg-surface border border-line rounded-2xl max-w-md w-full p-6 relative">
             <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
               <div>
                 <h3 className="text-base font-bold text-foreground">Tambah Kategori Baru</h3>

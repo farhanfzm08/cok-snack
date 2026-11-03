@@ -50,6 +50,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<string>("kasir");
   const [userEmail, setUserEmail] = useState<string>("");
+  const [storeName, setStoreName] = useState<string>("COK Snack");
+  const [tagline, setTagline] = useState<string>("Cemilan Orang Kaya");
 
   useEffect(() => {
     const supabase = createClient();
@@ -59,6 +61,27 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         setUserEmail(user.email || "");
       }
     });
+
+    const loadStoreInfo = () => {
+      const saved = localStorage.getItem("cok_snack_settings");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.storeName) setStoreName(parsed.storeName);
+          if (parsed.tagline) setTagline(parsed.tagline);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    loadStoreInfo();
+    window.addEventListener("cok_snack_settings_updated", loadStoreInfo);
+    window.addEventListener("storage", loadStoreInfo);
+    return () => {
+      window.removeEventListener("cok_snack_settings_updated", loadStoreInfo);
+      window.removeEventListener("storage", loadStoreInfo);
+    };
   }, []);
 
   const roleBg: Record<string, string> = {
@@ -78,16 +101,16 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Brand Header */}
       <div>
         <div className="h-16 flex items-center justify-between px-5 border-b border-line">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-lavender text-primary flex items-center justify-center font-bold shadow-xs">
+          <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-lavender text-primary flex items-center justify-center font-bold shrink-0 border border-line">
               <Store className="w-5 h-5 text-primary" />
             </div>
-            <div>
-              <h1 className="font-bold text-base tracking-tight text-foreground">
-                COK Snack
+            <div className="min-w-0 flex-1">
+              <h1 className="font-bold text-base tracking-tight text-foreground truncate" title={storeName}>
+                {storeName}
               </h1>
-              <p className="text-[11px] text-muted -mt-0.5 font-medium">
-                Cemilan Orang Kaya
+              <p className="text-[11px] text-muted -mt-0.5 font-medium truncate" title={tagline}>
+                {tagline}
               </p>
             </div>
           </Link>

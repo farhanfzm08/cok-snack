@@ -15,8 +15,13 @@ import {
   BarChart3,
   Search,
   CheckCircle2,
-  Boxes,
+  Trophy,
+  Users,
+  CreditCard,
+  Banknote,
+  QrCode,
   X,
+  User
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,16 +50,40 @@ interface ProductItem {
   categories?: { name: string } | null;
 }
 
+interface TopProduct {
+  name: string;
+  category: string;
+  totalSold: number;
+  totalRevenue: number;
+}
+
+interface TopBuyer {
+  name: string;
+  totalSpent: number;
+  txCount: number;
+}
+
 export default function DashboardPage() {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
+  const [storeName, setStoreName] = useState("COK Snack");
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [todayOmzet, setTodayOmzet] = useState(0);
   const [todayTxCount, setTodayTxCount] = useState(0);
   const [todayGrossProfit, setTodayGrossProfit] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [recentSales, setRecentSales] = useState<any[]>([]);
+
+  // Advanced Analytics
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [topBuyers, setTopBuyers] = useState<TopBuyer[]>([]);
+  const [paymentStats, setPaymentStats] = useState({
+    cash: 0,
+    qris: 0,
+    transfer: 0,
+    total: 0,
+  });
 
   // Search & Filter Produk di Dashboard
   const [searchProduct, setSearchProduct] = useState("");
@@ -65,6 +94,18 @@ export default function DashboardPage() {
   const [stockAddAmount, setStockAddAmount] = useState("20");
   const [isSavingStock, setIsSavingStock] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("cok_snack_settings");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.storeName) setStoreName(parsed.storeName);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -86,13 +127,14 @@ export default function DashboardPage() {
         setLowStockCount(lowStock.length);
       }
 
-      // 2. Fetch Sales
+      // 2. Fetch Sales with items
       const { data: salesData } = await supabase
         .from("sales")
-        .select("*")
+        .select("*, sale_items(*, products(name, categories(name)))")
         .order("sale_date", { ascending: false });
 
       if (salesData) {
+        // Sales Hari Ini
         const todaySales = salesData.filter((s: any) =>
           s.sale_date.startsWith(todayStr)
         );
@@ -110,6 +152,76 @@ export default function DashboardPage() {
         setTodayTxCount(todaySales.length);
         setTodayGrossProfit(omzet - cogs);
         setRecentSales(salesData.slice(0, 5));
+
+        // Hitung Top 3 Produk Terlaris
+        const productMap: Record<string, TopProduct> = {};
+        salesData.forEach((s: any) => {
+          if (Array.isArray(s.sale_items)) {
+            s.sale_items.forEach((item: any) => {
+              const pName = item.products?.name || "Produk";
+              const pCat = item.products?.categories?.name || "Snack";
+              if (!productMap[pName]) {
+                productMap[pName] = {
+                  name: pName,
+                  category: pCat,
+                  totalSold: 0,
+                  totalRevenue: 0,
+                };
+              }
+              productMap[pName].totalSold += Number(item.quantity || 0);
+              productMap[pName].totalRevenue += Number(item.subtotal || 0);
+            });
+          }
+        });
+        const sortedProducts = Object.values(productMap)
+          .sort((a, b) => b.totalSold - a.totalSold)
+          .slice(0, 3);
+        setTopProducts(sortedProducts);
+
+        // Hitung Top 3 Buyer
+        const buyerMap: Record<string, TopBuyer> = {};
+        salesData.forEach((s: any) => {
+          let bName = (s.customer_name || "").trim();
+          if (!bName && s.notes) {
+            bName = s.notes.replace(/^Pembeli:\s*/i, "").trim();
+          }
+          if (!bName || bName === "Penjualan Kasir POS") {
+            bName = "Umum";
+          }
+
+          if (!buyerMap[bName]) {
+            buyerMap[bName] = {
+              name: bName,
+              totalSpent: 0,
+              txCount: 0,
+            };
+          }
+          buyerMap[bName].totalSpent += Number(s.total_amount || 0);
+          buyerMap[bName].txCount += 1;
+        });
+
+        // Urutkan buyer, prioritaskan yang bernama jika ada nilai sama
+        const sortedBuyers = Object.values(buyerMap)
+          .sort((a, b) => b.totalSpent - a.totalSpent)
+          .slice(0, 3);
+        setTopBuyers(sortedBuyers);
+
+        // Hitung Metode Pembayaran
+        let cash = 0;
+        let qris = 0;
+        let transfer = 0;
+        salesData.forEach((s: any) => {
+          const amt = Number(s.total_amount || 0);
+          if (s.payment_method === "cash") cash += amt;
+          else if (s.payment_method === "qris") qris += amt;
+          else if (s.payment_method === "transfer") transfer += amt;
+        });
+        setPaymentStats({
+          cash,
+          qris,
+          transfer,
+          total: cash + qris + transfer,
+        });
       }
     } catch (err: any) {
       console.error(err);
@@ -212,24 +324,24 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-lg border border-success/40 bg-surface text-success text-sm flex items-center gap-2 animate-in fade-in">
+        <div className="fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl border border-success/40 bg-surface text-success text-sm flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
 
       {/* Top Banner / Welcome Action */}
-      <div className="bg-surface border border-line rounded-3xl p-6 sm:p-7 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+      <div className="bg-surface border border-line rounded-2xl p-6 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 mb-1">
-            <Badge variant="lavender">COK Snack System Aktif</Badge>
+            <Badge variant="lavender">{storeName} Aktif</Badge>
             <Badge variant="mint">Database Terhubung</Badge>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Halo, Selamat Datang di COK Snack!
+            Halo, Selamat Datang di {storeName}!
           </h1>
           <p className="text-sm text-muted max-w-xl">
-            Sistem kasir penjualan snack kemasan dan monitoring persediaan stok produk secara terintegrasi.
+            Sistem kasir penjualan snack kemasan, pemantauan stok produk, dan rekapitulasi laba harian terintegrasi.
           </p>
         </div>
 
@@ -274,6 +386,178 @@ export default function DashboardPage() {
             </Card>
           );
         })}
+      </div>
+
+      {/* SECTION LAPORAN PENTING: TOP 3 PRODUK & TOP 3 BUYER & PAYMENT STATS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* TOP 3 PRODUK TERLARIS */}
+        <Card className="p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-yellow text-warning flex items-center justify-center font-bold">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Top 3 Produk Terlaris</h3>
+                  <p className="text-[11px] text-muted">Snack paling banyak dibeli</p>
+                </div>
+              </div>
+              <Badge variant="yellow" size="sm">Best Seller</Badge>
+            </div>
+
+            {topProducts.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted">
+                Belum ada data penjualan tercatat.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {topProducts.map((p, i) => {
+                  const rankIcons = ["🥇", "🥈", "🥉"];
+                  const rankColors = ["bg-yellow/30 text-warning border-yellow/50", "bg-sky/30 text-[#1D5B99] border-sky/50", "bg-peach/30 text-accent-dark border-peach/50"];
+                  return (
+                    <div
+                      key={i}
+                      className="p-3 rounded-xl bg-background border border-line flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 ${rankColors[i]}`}>
+                          {rankIcons[i]}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-foreground truncate">{p.name}</p>
+                          <p className="text-[11px] text-muted">{p.category}</p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-xs text-foreground">{p.totalSold} bungkus</p>
+                        <p className="text-[11px] text-success font-semibold">{formatRupiah(p.totalRevenue)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* TOP 3 BUYER / PEMBELI TERBANYAK */}
+        <Card className="p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-mint text-success flex items-center justify-center font-bold">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Top 3 Pembeli (Buyer)</h3>
+                  <p className="text-[11px] text-muted">Pelanggan transaksi tertinggi</p>
+                </div>
+              </div>
+              <Badge variant="mint" size="sm">Top Spender</Badge>
+            </div>
+
+            {topBuyers.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted">
+                Belum ada transaksi dengan nama pembeli.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {topBuyers.map((b, i) => {
+                  const rankIcons = ["🥇", "🥈", "🥉"];
+                  const rankColors = ["bg-mint/30 text-success border-mint/50", "bg-lavender/40 text-primary border-primary/30", "bg-peach/30 text-accent-dark border-peach/50"];
+                  return (
+                    <div
+                      key={i}
+                      className="p-3 rounded-xl bg-background border border-line flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 ${rankColors[i]}`}>
+                          {rankIcons[i]}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-foreground truncate uppercase">{b.name}</p>
+                          <p className="text-[11px] text-muted">{b.txCount} transaksi kasir</p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-xs text-primary">{formatRupiah(b.totalSpent)}</p>
+                        <p className="text-[10px] text-muted">Total Belanja</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* METODE PEMBAYARAN & RATIO */}
+        <Card className="p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-sky text-[#1D5B99] flex items-center justify-center font-bold">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Metode Pembayaran</h3>
+                  <p className="text-[11px] text-muted">Distribusi transaksi kasir</p>
+                </div>
+              </div>
+              <Badge variant="sky" size="sm">Omzet</Badge>
+            </div>
+
+            <div className="space-y-2.5">
+              {/* Tunai */}
+              <div className="p-2.5 rounded-xl bg-background border border-line flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-success" />
+                  <span className="text-xs font-semibold text-foreground">Tunai (Cash)</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-foreground">{formatRupiah(paymentStats.cash)}</span>
+                  <span className="text-[10px] text-muted ml-1.5">
+                    ({paymentStats.total > 0 ? Math.round((paymentStats.cash / paymentStats.total) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+
+              {/* QRIS */}
+              <div className="p-2.5 rounded-xl bg-background border border-line flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">QRIS</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-foreground">{formatRupiah(paymentStats.qris)}</span>
+                  <span className="text-[10px] text-muted ml-1.5">
+                    ({paymentStats.total > 0 ? Math.round((paymentStats.qris / paymentStats.total) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+
+              {/* Transfer */}
+              <div className="p-2.5 rounded-xl bg-background border border-line flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-[#1D5B99]" />
+                  <span className="text-xs font-semibold text-foreground">Transfer Bank</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-foreground">{formatRupiah(paymentStats.transfer)}</span>
+                  <span className="text-[10px] text-muted ml-1.5">
+                    ({paymentStats.total > 0 ? Math.round((paymentStats.transfer / paymentStats.total) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs">
+            <span className="text-muted font-medium">Total Terkumpul:</span>
+            <span className="font-bold text-sm text-foreground">{formatRupiah(paymentStats.total)}</span>
+          </div>
+        </Card>
       </div>
 
       {/* SECTION UTAMA: FOKUS MENAMPILKAN PRODUK */}
@@ -389,20 +673,18 @@ export default function DashboardPage() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <button
                           onClick={() => {
                             setSelectedProduct(p);
                             setStockAddAmount("20");
                             setIsStockModalOpen(true);
                           }}
-                          className="text-xs h-7 px-2.5 gap-1 border-line hover:border-primary text-muted hover:text-foreground"
-                          title="Tambah Stok Masuk"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-line bg-surface hover:bg-lavender/30 hover:border-primary text-foreground transition-colors"
+                          title="Tambah Stok Bungkus"
                         >
-                          <Plus className="w-3 h-3 text-primary" />
-                          <span>+ Stok</span>
-                        </Button>
+                          <Plus className="w-3.5 h-3.5 text-primary" />
+                          <span>Tambah Stok</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -420,11 +702,11 @@ export default function DashboardPage() {
           <Card className="p-5">
             <CardHeader
               title="Aktivitas Penjualan Kasir Terkini"
-              subtitle="Riwayat struk kasir yang baru saja diselesaikan"
+              subtitle="Riwayat transaksi kasir beserta nama pembeli"
               action={
                 <Link href="/reports">
                   <Button variant="ghost" size="sm">
-                    <span>Lihat Laporan</span>
+                    <span>Lihat Laporan Lengkap</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
@@ -449,31 +731,45 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="border-b border-line text-muted uppercase tracking-wider font-semibold">
                       <th className="py-2.5 px-3">No. Invoice</th>
+                      <th className="py-2.5 px-3">Nama Pembeli</th>
                       <th className="py-2.5 px-3">Waktu</th>
                       <th className="py-2.5 px-3">Metode Bayar</th>
                       <th className="py-2.5 px-3 text-right">Total Belanja</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/60">
-                    {recentSales.map((s) => (
-                      <tr key={s.id} className="hover:bg-background/50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-foreground">
-                          {s.invoice_number}
-                        </td>
-                        <td className="py-2.5 px-3 text-muted">
-                          {new Date(s.sale_date).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </td>
-                        <td className="py-2.5 px-3 uppercase font-mono text-[11px] font-semibold text-muted">
-                          {s.payment_method}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-success">
-                          {formatRupiah(s.total_amount)}
-                        </td>
-                      </tr>
-                    ))}
+                    {recentSales.map((s) => {
+                      let buyer = (s.customer_name || "").trim();
+                      if (!buyer && s.notes) {
+                        buyer = s.notes.replace(/^Pembeli:\s*/i, "").trim();
+                      }
+                      if (!buyer || buyer === "Penjualan Kasir POS") buyer = "Umum";
+
+                      return (
+                        <tr key={s.id} className="hover:bg-background/50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-foreground">
+                            {s.invoice_number}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <Badge variant="lavender" size="sm" className="font-semibold uppercase text-[10px]">
+                              {buyer}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3 text-muted">
+                            {new Date(s.sale_date).toLocaleTimeString("id-ID", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-2.5 px-3 uppercase font-mono text-[11px] font-semibold text-muted">
+                            {s.payment_method}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-success">
+                            {formatRupiah(s.total_amount)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -481,14 +777,14 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Kolom Kanan: 1 Col Pintasan Cepat */}
+        {/* Kolom Kanan: 1 Col Pintasan Navigasi */}
         <div className="space-y-6">
           <Card pastelAccent="lavender">
             <CardHeader title="Navigasi Menu Utama" />
             <div className="space-y-2">
               <Link
                 href="/products"
-                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-lavender/50 transition-colors group"
+                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-lavender/50 transition-colors group border border-line"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-surface text-primary flex items-center justify-center border border-line">
@@ -508,7 +804,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/pos"
-                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-peach/50 transition-colors group"
+                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-peach/50 transition-colors group border border-line"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-surface text-[#A04128] flex items-center justify-center border border-line">
@@ -528,7 +824,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/reports"
-                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-sky/50 transition-colors group"
+                className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-sky/50 transition-colors group border border-line"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-surface text-[#1D5B99] flex items-center justify-center border border-line">
@@ -547,80 +843,72 @@ export default function DashboardPage() {
               </Link>
             </div>
           </Card>
-
-          <Card className="p-4">
-            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">
-              Alur Kerja Praktis COK Snack
-            </h3>
-            <ol className="text-xs text-muted space-y-2 list-decimal list-inside">
-              <li>
-                <strong className="text-foreground">Tambah Produk</strong> baru beserta modal HPP dan harga jual.
-              </li>
-              <li>
-                <strong className="text-foreground">Tambah Stok</strong> bungkus jika ada produksi snack baru siap jual.
-              </li>
-              <li>
-                <strong className="text-foreground">Kasir (POS)</strong> melayani pembeli dan mencetak struk.
-              </li>
-              <li>
-                <strong className="text-foreground">Laporan</strong> memantau omzet & laba bersih otomatis!
-              </li>
-            </ol>
-          </Card>
         </div>
       </div>
 
-      {/* MODAL TAMBAH STOK CEPAT DI DASHBOARD */}
+      {/* MODAL TAMBAH STOK CEPAT */}
       {isStockModalOpen && selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-masuk">
-          <div className="bg-surface border border-line rounded-3xl max-w-sm w-full p-6 shadow-xl relative">
-            <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-line rounded-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95">
+            <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-lavender/20">
               <div>
-                <h3 className="text-base font-bold text-foreground">Tambah Stok Snack</h3>
-                <p className="text-xs text-muted">{selectedProduct.name}</p>
+                <h3 className="text-sm font-bold text-foreground">Tambah Stok Snack Masuk</h3>
+                <p className="text-xs text-muted truncate max-w-[220px]">{selectedProduct.name}</p>
               </div>
               <button
                 onClick={() => {
                   setIsStockModalOpen(false);
                   setSelectedProduct(null);
                 }}
-                className="p-1.5 text-muted hover:text-foreground rounded-xl"
+                className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-background"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleQuickAddStock} className="space-y-4 text-sm">
+            <form onSubmit={handleQuickAddStock} className="p-5 space-y-4">
               <div className="p-3 bg-background rounded-xl border border-line flex justify-between items-center text-xs">
-                <span className="text-muted">Stok Saat Ini:</span>
+                <span className="text-muted">Stok Sekarang:</span>
                 <span className="font-bold text-foreground text-sm">
-                  {selectedProduct.current_stock} {selectedProduct.unit || "bks"}
+                  {selectedProduct.current_stock || 0} {selectedProduct.unit || "bks"}
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Jumlah Stok Masuk ({selectedProduct.unit || "bungkus"}) *
+                <label className="block text-xs font-semibold text-muted mb-1.5">
+                  Jumlah Tambahan Stok Masuk (Bungkus)
                 </label>
                 <input
                   type="number"
-                  required
                   min="1"
+                  required
                   value={stockAddAmount}
                   onChange={(e) => setStockAddAmount(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-background border border-line rounded-xl text-base font-bold text-primary focus:outline-hidden focus:border-primary"
+                  className="w-full bg-background border border-line rounded-xl px-3 py-2 text-base font-bold text-foreground text-center focus:outline-hidden focus:border-primary"
                 />
-                <p className="text-[11px] text-muted mt-1">
+                <p className="text-[11px] text-muted mt-1.5 text-center">
                   Stok akhir akan menjadi:{" "}
-                  <strong>
-                    {Number(selectedProduct.current_stock || 0) +
-                      (Number(stockAddAmount) || 0)}{" "}
-                    {selectedProduct.unit || "bungkus"}
+                  <strong className="text-success font-bold">
+                    {(Number(selectedProduct.current_stock) || 0) + (Number(stockAddAmount) || 0)}{" "}
+                    {selectedProduct.unit || "bks"}
                   </strong>
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
+              <div className="flex gap-2">
+                {[10, 20, 50, 100].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setStockAddAmount(val.toString())}
+                    className="flex-1 py-1 bg-background border border-line rounded-lg text-xs font-semibold text-muted hover:text-foreground hover:border-primary transition-colors"
+                  >
+                    +{val}
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-line flex items-center justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -632,12 +920,7 @@ export default function DashboardPage() {
                 >
                   Batal
                 </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  disabled={isSavingStock}
-                >
+                <Button type="submit" variant="primary" size="sm" disabled={isSavingStock}>
                   {isSavingStock ? "Menyimpan..." : "Simpan Tambah Stok"}
                 </Button>
               </div>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +51,7 @@ interface CartItem {
 interface CompletedSale {
   invoice_number: string;
   sale_date: string;
+  customer_name?: string;
   items: CartItem[];
   subtotal: number;
   discount: number;
@@ -82,6 +83,7 @@ export default function PosPage() {
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [customerName, setCustomerName] = useState("");
   const [discount, setDiscount] = useState("0");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "qris">("cash");
   const [amountPaid, setAmountPaid] = useState("");
@@ -225,6 +227,7 @@ export default function PosPage() {
 
   const clearCart = () => {
     setCart([]);
+    setCustomerName("");
     setDiscount("0");
     setAmountPaid("");
   };
@@ -258,6 +261,7 @@ export default function PosPage() {
 
     setIsSubmitting(true);
     const invoiceNumber = `INV-${Date.now().toString().slice(-8)}`;
+    const buyerClean = customerName.trim() || "Umum";
 
     const itemsPayload = cart.map((item) => ({
       product_id: item.product.id,
@@ -276,7 +280,7 @@ export default function PosPage() {
       p_amount_paid: amountPaidNum,
       p_change_due: changeDue,
       p_payment_method: paymentMethod,
-      p_notes: "Penjualan Kasir POS",
+      p_notes: buyerClean,
     });
 
     setIsSubmitting(false);
@@ -284,10 +288,20 @@ export default function PosPage() {
     if (error) {
       showToast("error", "Transaksi gagal: " + error.message);
     } else {
+      // If sale created successfully, also sync customer_name column on the record
+      if (data) {
+        try {
+          await supabase.from("sales").update({ customer_name: buyerClean }).eq("id", data);
+        } catch {
+          // ignore if column not present yet
+        }
+      }
+
       // Set completed sale for receipt
       setCompletedSale({
         invoice_number: invoiceNumber,
         sale_date: new Date().toLocaleString("id-ID"),
+        customer_name: buyerClean,
         items: [...cart],
         subtotal,
         discount: discountNum,
@@ -536,6 +550,21 @@ export default function PosPage() {
             )}
           </div>
 
+          {/* Nama Pembeli (Hanya Nama!) */}
+          <div className="pt-2 border-t border-line space-y-1">
+            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+              <span>Nama Pembeli:</span>
+              <span className="text-[10px] text-muted font-normal">(hanya nama)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Contoh: Budi / Bu Rina (default: Umum)"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs bg-background border border-line rounded-xl focus:outline-hidden focus:border-primary text-foreground font-medium"
+            />
+          </div>
+
           {/* Pricing Calculation Summary */}
           <div className="pt-3 border-t border-line space-y-2 text-xs">
             <div className="flex items-center justify-between text-muted">
@@ -738,6 +767,10 @@ export default function PosPage() {
                 <div className="flex justify-between">
                   <span>Kasir    :</span>
                   <span>Kasir 1 / Admin</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pembeli  :</span>
+                  <span className="font-bold uppercase text-black">{completedSale.customer_name || "Umum"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Metode   :</span>

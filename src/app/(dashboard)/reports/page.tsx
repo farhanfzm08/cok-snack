@@ -33,6 +33,8 @@ interface SaleRecord {
   id: string;
   invoice_number: string;
   sale_date: string;
+  customer_name?: string;
+  notes?: string;
   subtotal: number;
   discount: number;
   total_amount: number;
@@ -63,6 +65,17 @@ function formatRupiah(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function getBuyerName(s: SaleRecord): string {
+  if (s.customer_name && s.customer_name.trim() !== "" && s.customer_name !== "Umum") {
+    return s.customer_name;
+  }
+  if (s.notes) {
+    const clean = s.notes.replace(/^Pembeli:\s*/i, "").trim();
+    if (clean && clean !== "Penjualan Kasir POS") return clean;
+  }
+  return s.customer_name || "Umum";
 }
 
 export default function ReportsPage() {
@@ -198,9 +211,10 @@ export default function ReportsPage() {
     let filename = `laporan-cok-snack-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
 
     if (activeTab === "sales") {
-      headers = ["No. Invoice", "Tanggal", "Metode Bayar", "Subtotal", "Diskon", "Total Omzet", "Total HPP", "Laba Kotor"];
+      headers = ["No. Invoice", "Nama Pembeli", "Tanggal", "Metode Bayar", "Subtotal", "Diskon", "Total Omzet", "Total HPP", "Laba Kotor"];
       rows = filteredSales.map((s) => [
         s.invoice_number,
+        getBuyerName(s),
         new Date(s.sale_date).toLocaleString("id-ID"),
         s.payment_method,
         s.subtotal,
@@ -392,6 +406,7 @@ export default function ReportsPage() {
                   <thead>
                     <tr className="border-b border-line text-xs font-semibold text-muted uppercase tracking-wider">
                       <th className="py-3 px-3">No. Faktur</th>
+                      <th className="py-3 px-3">Nama Pembeli</th>
                       <th className="py-3 px-3">Waktu Transaksi</th>
                       <th className="py-3 px-3">Metode Bayar</th>
                       <th className="py-3 px-3 text-right">Omzet</th>
@@ -406,6 +421,11 @@ export default function ReportsPage() {
                       return (
                         <tr key={s.id} className="hover:bg-background/60 transition-colors">
                           <td className="py-3 px-3 font-semibold text-foreground text-xs">{s.invoice_number}</td>
+                          <td className="py-3 px-3">
+                            <Badge variant="lavender" size="sm" className="font-semibold text-xs capitalize">
+                              {getBuyerName(s)}
+                            </Badge>
+                          </td>
                           <td className="py-3 px-3 text-xs text-muted">
                             {new Date(s.sale_date).toLocaleString("id-ID", {
                               day: "numeric",
@@ -622,6 +642,7 @@ export default function ReportsPage() {
                       <tr>
                         <th className="py-2.5 px-3 border-r border-gray-400">No.</th>
                         <th className="py-2.5 px-3 border-r border-gray-400">No. Faktur</th>
+                        <th className="py-2.5 px-3 border-r border-gray-400">Nama Pembeli</th>
                         <th className="py-2.5 px-3 border-r border-gray-400">Waktu</th>
                         <th className="py-2.5 px-3 border-r border-gray-400">Metode</th>
                         <th className="py-2.5 px-3 text-right border-r border-gray-400">Omzet (Rp)</th>
@@ -647,6 +668,9 @@ export default function ReportsPage() {
                           <td className="py-2 px-3 border-r border-gray-300 text-center">{idx + 1}</td>
                           <td className="py-2 px-3 border-r border-gray-300 font-mono font-semibold">
                             {s.invoice_number}
+                          </td>
+                          <td className="py-2 px-3 border-r border-gray-300 font-semibold uppercase">
+                            {getBuyerName(s)}
                           </td>
                           <td className="py-2 px-3 border-r border-gray-300">
                             {new Date(s.sale_date).toLocaleDateString("id-ID")}

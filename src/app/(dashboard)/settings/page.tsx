@@ -33,6 +33,7 @@ import { createClient } from "@/lib/supabase/client";
 
 interface StoreSettings {
   storeName: string;
+  tagline: string;
   phone: string;
   address: string;
   receiptFooter: string;
@@ -51,7 +52,8 @@ interface AppUser {
 export default function SettingsPage() {
   const supabase = createClient();
   const [settings, setSettings] = useState<StoreSettings>({
-    storeName: "COK Snack (Cemilan Orang Kaya)",
+    storeName: "COK Snack",
+    tagline: "Cemilan Orang Kaya",
     phone: "0812-3456-7890",
     address: "Jl. Industri Keripik No. 8, Indonesia",
     receiptFooter:
@@ -158,6 +160,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     localStorage.setItem("cok_snack_settings", JSON.stringify(settings));
+    window.dispatchEvent(new Event("cok_snack_settings_updated"));
     setTimeout(() => {
       setSaving(false);
       setSuccessMsg("Pengaturan profil toko berhasil disimpan!");
@@ -491,13 +494,26 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
-                Nama Usaha / Toko
+                Nama Usaha / Toko (Tampil di Kiri Atas)
               </label>
               <input
                 type="text"
                 required
                 value={settings.storeName}
                 onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
+                className="w-full bg-background border border-line rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Slogan / Tagline Toko (Subjudul Kiri Atas)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Cemilan Orang Kaya"
+                value={settings.tagline}
+                onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
                 className="w-full bg-background border border-line rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary"
               />
             </div>
