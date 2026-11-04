@@ -31,6 +31,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getLocalSettings, saveLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 interface StoreSettings {
   storeName: string;
@@ -130,15 +131,11 @@ export default function SettingsPage() {
 
     initUserData();
 
-    // 2. Load settings dari localStorage
-    const saved = localStorage.getItem("cok_snack_settings");
-    if (saved) {
-      try {
-        setSettings(JSON.parse(saved));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    // 2. Load settings dari localStorage & cloud database
+    setSettings(getLocalSettings());
+    syncStoreSettings().then((cloudSettings) => {
+      if (cloudSettings) setSettings(cloudSettings);
+    });
 
     // 3. Load DB counts
     const fetchCounts = async () => {
@@ -170,16 +167,37 @@ export default function SettingsPage() {
     fetchCounts();
   }, []);
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    localStorage.setItem("cok_snack_settings", JSON.stringify(settings));
-    window.dispatchEvent(new Event("cok_snack_settings_updated"));
-    setTimeout(() => {
+    setErrorMsg(null);
+
+    // 1. Simpan segera ke cache lokal untuk respon instan
+    saveLocalSettings(settings);
+
+    // 2. Simpan ke database cloud Supabase agar otomatis tersinkronisasi ke device lain
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal sinkronisasi ke cloud");
+      }
+
+      setSuccessMsg("Pengaturan profil toko berhasil disimpan dan tersinkronisasi ke seluruh perangkat!");
+    } catch (err: any) {
+      console.warn("Gagal simpan ke cloud database:", err);
+      setSuccessMsg(
+        "Pengaturan disimpan di perangkat ini. (Jalankan patch_store_settings.sql di Supabase agar tersinkronisasi ke semua device)"
+      );
+    } finally {
       setSaving(false);
-      setSuccessMsg("Pengaturan profil toko berhasil disimpan!");
-      setTimeout(() => setSuccessMsg(null), 3000);
-    }, 400);
+      setTimeout(() => setSuccessMsg(null), 4000);
+    }
   };
 
   const handleAddUser = async (e: React.FormEvent) => {

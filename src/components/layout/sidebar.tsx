@@ -15,6 +15,7 @@ import {
   User,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 export interface NavItem {
   name: string;
@@ -63,19 +64,19 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     });
 
     const loadStoreInfo = () => {
-      const saved = localStorage.getItem("cok_snack_settings");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.storeName) setStoreName(parsed.storeName);
-          if (parsed.tagline) setTagline(parsed.tagline);
-        } catch (e) {
-          console.error(e);
-        }
-      }
+      const current = getLocalSettings();
+      setStoreName(current.storeName);
+      setTagline(current.tagline);
     };
 
     loadStoreInfo();
+    syncStoreSettings().then((cloud) => {
+      if (cloud) {
+        setStoreName(cloud.storeName);
+        setTagline(cloud.tagline);
+      }
+    });
+
     window.addEventListener("cok_snack_settings_updated", loadStoreInfo);
     window.addEventListener("storage", loadStoreInfo);
     return () => {

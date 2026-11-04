@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, LogIn, Store } from "lucide-react";
+import { getLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,16 +17,16 @@ export default function LoginPage() {
   const [tagline, setTagline] = useState("Cemilan Orang Kaya");
 
   useEffect(() => {
-    const saved = localStorage.getItem("cok_snack_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.storeName) setStoreName(parsed.storeName);
-        if (parsed.tagline) setTagline(parsed.tagline);
-      } catch (e) {
-        console.error(e);
+    const s = getLocalSettings();
+    setStoreName(s.storeName);
+    setTagline(s.tagline);
+
+    syncStoreSettings().then((cloud) => {
+      if (cloud) {
+        setStoreName(cloud.storeName);
+        setTagline(cloud.tagline);
       }
-    }
+    });
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

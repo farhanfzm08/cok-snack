@@ -25,6 +25,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 interface Product {
   id: string;
@@ -106,22 +107,10 @@ export default function PosPage() {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("cok_snack_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setStoreSettings((prev) => ({
-          ...prev,
-          storeName: parsed.storeName || "COK SNACK",
-          tagline: parsed.tagline || "Cemilan Orang Kaya",
-          phone: parsed.phone || "0812-3456-7890",
-          address: parsed.address || "Jl. Industri Keripik No. 8, Indonesia",
-          receiptFooter: parsed.receiptFooter || prev.receiptFooter,
-        }));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    setStoreSettings(getLocalSettings());
+    syncStoreSettings().then((cloud) => {
+      if (cloud) setStoreSettings(cloud);
+    });
   }, []);
 
   const fetchProducts = async () => {

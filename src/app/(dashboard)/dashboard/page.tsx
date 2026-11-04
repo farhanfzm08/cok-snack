@@ -27,6 +27,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { getLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -96,15 +97,12 @@ export default function DashboardPage() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("cok_snack_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.storeName) setStoreName(parsed.storeName);
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    const s = getLocalSettings();
+    setStoreName(s.storeName);
+
+    syncStoreSettings().then((cloud) => {
+      if (cloud) setStoreName(cloud.storeName);
+    });
   }, []);
 
   const fetchDashboardData = async () => {

@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
+import { getLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 export function DynamicTitle() {
   useEffect(() => {
     const updateTitle = () => {
       try {
-        const saved = localStorage.getItem("cok_snack_settings");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.storeName && parsed.storeName.trim() !== "") {
-            document.title = `${parsed.storeName.trim()} - Management`;
-            return;
-          }
+        const s = getLocalSettings();
+        if (s.storeName && s.storeName.trim() !== "") {
+          document.title = `${s.storeName.trim()} - Management`;
+          return;
         }
         document.title = "Snack - Management";
       } catch {
@@ -21,6 +19,8 @@ export function DynamicTitle() {
     };
 
     updateTitle();
+    syncStoreSettings().then(updateTitle);
+
     window.addEventListener("cok_snack_settings_updated", updateTitle);
     window.addEventListener("storage", updateTitle);
     return () => {

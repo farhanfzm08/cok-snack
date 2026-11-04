@@ -28,6 +28,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getLocalSettings, syncStoreSettings } from "@/lib/settings";
 
 interface SaleRecord {
   id: string;
@@ -97,20 +98,21 @@ export default function ReportsPage() {
   });
 
   useEffect(() => {
-    // Load store settings if saved
-    const saved = localStorage.getItem("cok_snack_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
+    const s = getLocalSettings();
+    setStoreSettings({
+      storeName: s.storeName,
+      phone: s.phone,
+      address: s.address,
+    });
+    syncStoreSettings().then((cloud) => {
+      if (cloud) {
         setStoreSettings({
-          storeName: parsed.storeName || "COK Snack",
-          phone: parsed.phone || "0812-3456-7890",
-          address: parsed.address || "Jl. Industri Keripik No. 8, Indonesia",
+          storeName: cloud.storeName,
+          phone: cloud.phone,
+          address: cloud.address,
         });
-      } catch (e) {
-        console.error(e);
       }
-    }
+    });
   }, []);
 
   const fetchReportsData = async () => {
