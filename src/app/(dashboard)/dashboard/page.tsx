@@ -61,6 +61,7 @@ interface TopProduct {
 interface TopBuyer {
   name: string;
   totalSpent: number;
+  totalItems: number;
   txCount: number;
 }
 
@@ -176,15 +177,15 @@ export default function DashboardPage() {
           .slice(0, 3);
         setTopProducts(sortedProducts);
 
-        // Hitung Top 3 Buyer
+        // Hitung Top 3 Buyer (Case-insensitive & Akurat menghitung total produk)
         const buyerMap: Record<string, TopBuyer> = {};
         salesData.forEach((s: any) => {
           // Prioritas: customer_name > notes (strip prefix) > "Umum"
           let bName = (s.customer_name || "").trim();
-          if (!bName || bName === "Umum") {
+          if (!bName || bName.toLowerCase() === "umum") {
             // Fallback ke notes jika customer_name kosong/default
             const notesVal = (s.notes || "").trim();
-            if (notesVal && notesVal !== "Penjualan Kasir POS" && notesVal !== "Umum") {
+            if (notesVal && notesVal !== "Penjualan Kasir POS" && notesVal.toLowerCase() !== "umum") {
               bName = notesVal.replace(/^Pembeli:\s*/i, "").trim();
             }
           }
@@ -192,31 +193,48 @@ export default function DashboardPage() {
             bName = "Umum";
           }
 
-          if (!buyerMap[bName]) {
-            buyerMap[bName] = {
-              name: bName,
+          // Case-insensitive key agar "Mami" dan "mami" digabung menjadi 1 pembeli yang sama
+          const key = bName.toLowerCase();
+
+          // Hitung total produk / bungkus yang dibeli pada transaksi ini
+          const itemsCount = Array.isArray(s.sale_items)
+            ? s.sale_items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)
+            : 0;
+
+          if (!buyerMap[key]) {
+            // Format nama tampilan rapi (Title Case)
+            const words = bName
+              .split(/\s+/)
+              .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+            const formattedName = words.join(" ");
+
+            buyerMap[key] = {
+              name: formattedName,
               totalSpent: 0,
+              totalItems: 0,
               txCount: 0,
             };
           }
-          buyerMap[bName].totalSpent += Number(s.total_amount || 0);
-          buyerMap[bName].txCount += 1;
+
+          buyerMap[key].totalSpent += Number(s.total_amount || 0);
+          buyerMap[key].totalItems += itemsCount;
+          buyerMap[key].txCount += 1;
         });
 
         // Urutkan buyer: yang punya nama (bukan "Umum") diprioritaskan,
-        // lalu sort berdasarkan total belanja tertinggi
-        const allBuyers = Object.values(buyerMap)
-          .sort((a, b) => {
-            // Named buyers come first when spending is equal
-            if (a.name === "Umum" && b.name !== "Umum") return 1;
-            if (a.name !== "Umum" && b.name === "Umum") return -1;
-            return b.totalSpent - a.totalSpent;
-          });
+        // lalu sort berdasarkan total belanja tertinggi, lalu total produk terbanyak
+        const allBuyers = Object.values(buyerMap).sort((a, b) => {
+          if (a.name.toLowerCase() === "umum" && b.name.toLowerCase() !== "umum") return 1;
+          if (a.name.toLowerCase() !== "umum" && b.name.toLowerCase() === "umum") return -1;
+          return b.totalSpent - a.totalSpent || b.totalItems - a.totalItems;
+        });
+
         // Top 3 excluding "Umum", fallback to include "Umum" if not enough
-        const namedBuyers = allBuyers.filter(b => b.name !== "Umum").slice(0, 3);
-        const sortedBuyers = namedBuyers.length >= 3
-          ? namedBuyers
-          : [...namedBuyers, ...allBuyers.filter(b => b.name === "Umum")].slice(0, 3);
+        const namedBuyers = allBuyers.filter((b) => b.name.toLowerCase() !== "umum").slice(0, 3);
+        const sortedBuyers =
+          namedBuyers.length >= 3
+            ? namedBuyers
+            : [...namedBuyers, ...allBuyers.filter((b) => b.name.toLowerCase() === "umum")].slice(0, 3);
         setTopBuyers(sortedBuyers);
 
         // Hitung Metode Pembayaran
@@ -490,7 +508,9 @@ export default function DashboardPage() {
                         </span>
                         <div className="min-w-0">
                           <p className="font-semibold text-xs text-foreground truncate uppercase">{b.name}</p>
-                          <p className="text-[11px] text-muted">{b.txCount} transaksi kasir</p>
+                          <p className="text-[11px] text-muted">
+                            <span className="font-semibold text-foreground">{b.totalItems} produk</span> ({b.txCount} transaksi)
+                          </p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
